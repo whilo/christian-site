@@ -24,25 +24,50 @@
       text-decoration: underline;
     }
     ul { padding-left: 1.2rem; }
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .profile img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
 
-<h1>Christian Weilbach</h1>
-<p><strong>Researcher &amp; Systems Builder</strong></p>
+<div class="profile">
+  <img src="christian_squamish.png" alt="Christian Weilbach" />
+  <div>
+    <h1 style="margin: 0 0 0.25rem;">Christian Weilbach</h1>
+    <p style="margin: 0;"><strong>Researcher &amp; Systems Builder</strong></p>
+  </div>
+</div>
 
-<p>I work on structured learning, persistent memory, and runtimes for intelligent systems.</p>
+<p>I work on structured learning, persistent memory, and runtimes for intelligent systems.
+My PhD at the University of British Columbia was in Structured Amortized Variational Inference.
+Before that, a Master's at Heidelberg University in Dictionary Learning with Bayesian GANs,
+and a Bachelor's implementing online learning for Boltzmann machines on spiking neuron models.
+I also spent several years studying Philosophy and Cultural Anthropology.</p>
 
 <h2>Current work</h2>
 <p>
-I am building <strong>Datahike</strong>, an immutable, versioned data substrate for intelligent systems.
+I am building <a href="https://datahike.io"><strong>Datahike</strong></a> — an immutable,
+versioned data substrate for intelligent systems. Datahike explores how learning, search, and
+coordination can be treated as long-lived, inspectable processes rather than disposable
+computations. The ecosystem includes
+<a href="https://datahike.io/proximum">Proximum</a> (versioned vector search),
+<a href="https://datahike.io/stratum">Stratum</a> (columnar SQL with branching), and
+<a href="https://github.com/replikativ/scriptum">Scriptum</a> (git-like Apache Lucene).
 </p>
 <p>
-Datahike explores how learning, search, and coordination can be treated as long-lived,
-inspectable processes rather than disposable computations.
-</p>
-<p>
-<a href="https://datahike.io">datahike.io</a>
+Previously consulted for <a href="https://roamresearch.com/">Roam Research</a> on their
+Datalog query backend, and for <a href="https://pol.is">pol.is</a> on PCA modernization.
 </p>
 
 <h2>Selected research</h2>
@@ -59,6 +84,12 @@ The following papers are representative outcomes of that line of work:
 </ul>
 <p>
 Full publication list: <a href="https://scholar.google.com/citations?user=6foQfZwAAAAJ&amp;hl=en">Google Scholar &rarr;</a>
+</p>
+
+<h2>Talks &amp; community</h2>
+<p>
+Talks at Google DeepMind London, OpenAI San Francisco, and MILA Montreal.
+Co-organized the Clojure meetup in Mannheim-Heidelberg and the Machine Learning Meetup Rhein-Neckar.
 </p>
 
 <h2>Perspective</h2>
