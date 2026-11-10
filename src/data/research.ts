@@ -186,6 +186,7 @@ export type Talk = { title: string; where: string; date?: string; url?: string }
 
 export const talks: Talk[] = [
   { title: 'Rationalizing a Society of Learners', where: 'Max Planck Institute for Intelligent Systems, Tübingen', date: 'October 2026', url: 'https://simm.is/talks/2026-10-mpi-tuebingen/' },
+  { title: 'Programming as and for inference', where: 'London Clojurians', date: 'May 2026', url: 'https://www.youtube.com/watch?v=f5uXy4MgnZk' },
   { title: 'Partially evaluating higher-order probabilistic programs without stochastic recursion to graphical models', where: 'LAFI workshop at POPL', date: '2025' },
   { title: 'Flexible diffusion models for videos, molecules, and inference in structured simulators', where: 'Google DeepMind, London', date: '2024' },
   { title: 'Video and graphically structured diffusion models', where: 'OpenAI, San Francisco', date: '2023' },

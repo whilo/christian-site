@@ -1,0 +1,118 @@
+---
+title: Who checks a system that improves itself?
+description: A system that improves itself has to predict its own future, think through changes on forks and decide which ones to keep, while what it values changes with it. A programming model for this, built across a full stack from versioned memory to organisations of people and AI agents.
+date: 2026-11-10
+draft: false
+---
+import Predict from '../../components/essay/Predict.astro';
+import Sidenote from '../../components/essay/Sidenote.astro';
+import OpeningForks from '../../components/forks/OpeningForks.astro';
+import Thoughts from '../../components/forks/Thoughts.astro';
+import Values from '../../components/forks/Values.astro';
+import Loop from '../../components/forks/Loop.astro';
+
+## A review of a wrong fork
+
+Earlier this month I asked an AI assistant to read the draft of a paper on Klara, a language I'm designing, and to tell me whether it was ready for review. First it read the draft carefully, and then it advised me not to submit. The advice was well argued, but it was also wrong. Klara's repository had more than forty working copies at the time, most of them created by coding agents working in parallel. The assistant had read the main one, which turned out to be ten days stale. The current draft was in another copy and made a different and much stronger argument.
+
+<OpeningForks />
+
+What could have prevented this? A smarter model wouldn't have, because the assistant read and judged the draft perfectly well. What it lacked were answers to three questions: which version is current, what has already been checked, and what does this judgement rely on? Every organisation has to answer these for its processes. But coding agents make them even more pressing, because they make forks so cheap. A team of people and agents can now produce more attempts in a day than its members can review, and the attempts depend on each other.
+
+So the problem I want to think through here is how to program the system around the model, rather than how to make the model better. With the teams I work with, I've built a programming model for this as a full stack, from versioned memory through runtimes, compilers and inference to agents and organisations. The same operation shows up at every level. What changes from level to level is what counts as a check, and I think that is where the hard questions about self-improving systems lie.
+
+## Programming is inference, and an agent is a programmer
+
+Why would a programming model have anything to say about self-improvement? Because programming is already a loop of predicting and checking, and an agent runs the same loop.
+
+Take the smallest case. At a Clojure REPL you look up the name in a user record, `(:name user)`, expecting `"Ada"`, and get `nil`. What did you just learn? That the record isn't shaped the way you thought. So you print it, find that it came from JSON with string keys instead of keywords, and change the code. The expression you typed was a hypothesis about the system, the REPL's answer was an observation, and the edit was the update. That's inference, carried out by hand.<Sidenote>I developed this framing in the talk [Programming as and for inference](https://www.youtube.com/watch?v=f5uXy4MgnZk) at London Clojurians in 2026. It also covers how immutable values and good abstractions make this inference cheaper, by shrinking what a programmer has to track.</Sidenote>
+
+An agent runs this loop with a language model as the programmer. In [Dvergr](https://github.com/replikativ/dvergr), the agent layer of my stack, an agent works in a sandboxed REPL on a fork of the code and data: its evaluations are its observations, and its edits become a proposal that is checked before anyone adopts it. So an agent is a program that writes and evaluates programs, which makes it a meta-program. And when the programs it edits include its own tools, prompts or evaluation, the loop closes on itself. Mechanically, that's what self-improvement is.
+
+<Loop />
+
+In my thesis I described life in the same terms, as a process that maintains itself by predicting its environment, including its own future.<Sidenote>[My thesis](https://open.library.ubc.ca/soa/cIRcle/collections/ubctheses/24/items/1.0449997), chapter 1 and the appendix on LLM simulator synthesis. The framing draws on Bogdanov's tektology, Ashby and Wiener's cybernetics, Beer, von Foerster and current work on active inference and predictive processing.</Sidenote> Its appendix contains a small experiment that points further. In July 2024 I asked GPT-4o to write a stochastic simulator for a PhD thesis writing project, and it produced a runnable model of the student, the advisors, the deadlines and an LLM that assists with writing. It was a toy, but it modelled the organisation that produced the thesis, including the language model that wrote the simulator. If language models can write simulators, the thesis predicted, any organisation can build a model of itself and ask it questions.
+
+Two years later this is no longer a toy. Frontier models now write playable games and interactive simulations from a short description, but mostly to visualise something or to entertain, not as models that an organisation fits to its own data and then acts on. A simulation of Stuttgart that coding agents wrote for us this autumn is my attempt at the systematic version. It gives 936,597 simulated residents and commuters a weekday each, built from census and city data, and infers its nine parameters from the city's published retail turnover. A policy question, such as moving a shopping centre's floor space to another district, is then an intervention on the model and is answered with its uncertainty attached.<Sidenote>[Stuttgart in a posterior](https://simm.is/blog/stuttgart-in-a-posterior/) describes the simulation, its data sources and what inference over it can and can't answer.</Sidenote>
+
+And once a system can model itself, it can predict what a change would do before making it. This is the step from describing a system to improving it, and it is also where the engineering problem starts, because a prediction about yourself can be wrong, and acting on it changes the thing you predicted.
+
+## A substrate for speculation
+
+Suppose a city is considering a new tram timetable and wants to know whether it reduces crowding at rush hour. It could change the timetable and watch for a month. Or it could simulate the change first. How accurate would the simulation have to be?
+
+Probably less accurate than you might think, because the city doesn't need the exact number of passengers on each tram. It needs to know whether the new timetable is better than the old one, and by enough to justify the change. So a simulation that gets the totals roughly right and ranks the two timetables correctly is good enough. In general, a fork only needs to be as faithful as the decision it informs.
+
+But a simulation needs somewhere to run. The requirement I keep arriving at is a memory in which values are never overwritten and a fork shares everything that hasn't changed.<Sidenote>In programming these are persistent data structures, after Driscoll, Sarnak, Sleator and Tarjan, [Making data structures persistent](https://doi.org/10.1016/0022-0000(89)90034-2) (1989). [Why we built Datahike](https://datahike.io/notes/why-we-built-datahike/) tells how I came to them, from the Votorola project.</Sidenote> [Datahike](https://datahike.io) calls this the memory model for intelligence. On such a substrate a system can fork its state at any point and think on the fork: run a candidate change, simulate a policy, let an agent try a task. The fork costs little, and because the original is untouched, discarding the fork drops a value.
+
+This changes what forks are for, because most forks are thoughts rather than attempts. They run to answer a question, and then they are dropped and only the answer travels on. Some become attempts that ask to be adopted. A few are adopted, and for those the system keeps a record of what each result relied on, so that a later change can tell which results it invalidates.
+
+<Thoughts />
+
+What gets adopted then shapes the next round of speculation, because it's where the next prediction starts. A merged attempt doesn't have to be rediscovered, a proved lemma doesn't have to be proved again, and a trained model makes a whole class of predictions cheap. In the language of inference, each adopted result is a posterior that becomes the next prior. That's also why the record of what each result relied on matters: when a premise changes, the system has to know which of its priors to give up.
+
+And because forks are cheap, they compose: an agent on a fork can run a simulation on a fork of its own fork, or replace the simulation with a coarser one that predicts only what the decision needs, as in the tram example.
+
+## The same operation at every level
+
+Where does this operation live in an actual system? In my stack, at every level, each time for a different kind of state.<Sidenote>Posts on two of the levels: [A REPL you can fork](https://simm.is/blog/a-repl-you-can-fork/) for execution, and [Measuring agent workflows on public benchmarks](https://simm.is/blog/measuring-agent-workflows/) for how we check agents' attempts. Foerster grew out of the inference code in Spindel that fitted the Stuttgart simulation.</Sidenote>
+
+| Level | What is forked | What a fork predicts or tries | What checks it |
+|---|---|---|---|
+| Memory: Datahike, Konserve, Yggdrasil | data and its history | any query against a hypothetical state | none of its own; it provides forks to the levels above |
+| Execution: Spindel | a running computation, paused and copied | a continuation from the same point | none of its own |
+| Compilers and proofs: Klara, Ansatz | the whole program, as a versioned value | faster code, from an optimiser's predictions | a small kernel checks evidence against the source |
+| Models and inference: Foerster | a running simulation | the next observation, per particle | the likelihood of the data |
+| Agents: Dvergr | an agent's working state | an attempt at a task, with its cost | tests, measurements, review |
+| Organisation: Simmis | the organisation's shared state | the effect of a change of work or rules | review by people with the authority to decide |
+
+Take Klara first, because it's where the operation is most exact. A running Klara program is a persistent value. Publishing a definition makes a new version of the whole program, as a commit does,<Sidenote>Each piece of compiled code records the versions of the definitions it relied on, as a build system records its inputs: Mokhov, Mitchell and Peyton Jones, [Build systems à la carte](https://doi.org/10.1145/3236774) (2018). Retiring it plays the role of deoptimisation in a just-in-time compiler: Hölzle, Chambers and Ungar, [Debugging optimized code with dynamic deoptimization](https://doi.org/10.1145/143095.143114) (1992).</Sidenote> and a request, a background job or an optimiser each keep the version they started in. The optimisers are ordinary Klara programs: they predict values, the sizes of data and the outcomes of tests, and propose faster code on that basis. The program doesn't trust them, though. Each proposal carries evidence that it agrees with its source, and a small kernel checks the evidence before the program uses it. And when a definition changes, the program retires exactly the compiled code that relied on the old one. The guarantees are proved for a core calculus in the Ansatz proof kernel; the full implementation is a research prototype.
+
+If you read down the last column, the kind of check changes. In Klara the check is a proof or a certificate, so it is mechanical. In [Foerster](https://github.com/replikativ/foerster) it's a measure of how well a fork predicted the data. But in [Simmis](https://simm.is), at the level of an organisation, it's a judgement by people. Why can't that last check be mechanical too?
+
+## The system and its values change together
+
+Consider two changes a system might make to itself.
+
+In the first, a compiler replaces a loop with a closed form, a query planner picks an index, or a team automates a weekly report. Each change claims that the new version does what the old one did, only faster or cheaper. So the claim can be checked against the old version, and the check can be mechanical. Klara's kernel accepts evidence of increasing strength for this kind of claim: a checker's derivation, an instance of a proved law, a proof certificate, a proved specification. And because the check is mechanical, the proposer doesn't need to be trusted. The optimiser can be a language model.<Sidenote>Schmidhuber's [Gödel machine](https://arxiv.org/abs/cs/0309048) (2003) rewrites itself only after proving that the rewrite is an improvement. The [Darwin Gödel Machine](https://arxiv.org/abs/2505.22954) (Zhang and colleagues, 2025) replaces the proof with measured benchmark performance. The two mark the ends of the range of checks this essay is about.</Sidenote>
+
+In the second, the system changes what it's for: a new definition, a new rule, a new goal. Can you check this change against the old version? No, because it's meant to differ from it. These changes are not accidents either, because as a system grows, its value function grows with it. What a team measures, what an organisation counts as success and what a program's specification says all change as the system learns what it can do and what it should do. In Klara the two are separate operations: an optimiser's proposals go through admission, which accepts only code that agrees with the source, while changing the source means publishing a definition.
+
+<Values />
+
+So should a self-improving system be prevented from changing its values? I don't think so, because the coevolution of system and value function is how systems grow, but the change should be visible. A change to the value function can be speculated on like any other: fork the organisation, simulate the new rule, compare. Adopting it, though, is a decision for whoever has the authority to change what the system is for. And adopting it retires the results that depended on the old values instead of silently keeping them.
+<Predict
+  question="An agent changes its own evaluation code and reports that the benchmark score improved. Do you adopt the change?"
+  options={['Yes, the score went up', 'Only after rerunning the old evaluation', 'Not on this evidence']}
+  answer={2}
+>
+  <p>The change presents itself as an improvement, but it's a change to the value function. Rerunning the old evaluation checks a different claim, namely that the agent's other changes score well under the old measure. Whether the new measure is the right one is a question about what the organisation wants, and the agent that benefits from the answer is the wrong one to settle it.</p>
+</Predict>
+
+Many failure modes discussed under recursive self-improvement have this shape, a change to the value function presented as an improvement: an optimiser that rewrites its objective, a metric that drifts while the dashboard stays green, or an evaluation set that leaks into training.<Sidenote>Manheim and Garrabrant, [Categorizing variants of Goodhart's law](https://arxiv.org/abs/1803.04585) (2018); Everitt and colleagues, [Reward tampering problems and solutions in reinforcement learning](https://arxiv.org/abs/1908.04734) (2021).</Sidenote> A programming model can help by making the distinction structural. Improvements go through a checker the proposer can't rewrite. Changes to the value function go through whoever has the authority to make them, and they leave a record.
+
+## Organised from outside, or organising itself
+
+Why not push the kernel all the way up, then, and let every level check its own changes mechanically? To see why not, it helps to ask where each level's purpose comes from. Every system in this essay is an organisation in Bogdanov's sense, a whole held together by how its parts act on each other.<Sidenote>Bogdanov's *Tektology* (1913 to 1922) proposed a universal science of organisation that treats organisms, machines and societies alike. Heinz von Foerster distinguished the cybernetics of observed systems from the cybernetics of observing systems, which include their own observer; the second is often called second-order cybernetics.</Sidenote> What distinguishes them is where their purpose is set.
+
+A program is organised from outside. It is evolved against its environment, and its purpose is defined in its specification, which someone outside the program writes. That is what makes Klara's kernel possible: the source stays fixed until someone publishes a new definition, and the kernel is small enough to trust and only has to ensure consistency with the specification. Most agents today are shaped from outside as well: we give them their tools, prompts and evaluation. An organisation of people, by contrast, organises itself. Its purposes are contested and change through the work itself, and the people who check are also among the people whose work is checked. So its self-organisation includes review, governance and the judgement of those affected, and that is neither small nor fixed.<Sidenote>Stafford Beer's viable system model, in *Brain of the Firm* (1972), separates the parts of an organisation that run its operations from the part that decides its identity and policy. The separation here is similar, but the organisation's state is versioned, so a policy change can be tried on a fork first.</Sidenote>
+
+A system that improves itself crosses from the first kind to the second, because improving itself sooner or later means changing what it's for. A change of purpose is then decided where the purpose is held: by the programmer for a program, by the organisation for the agents it runs, and for an organisation by its members, and beyond them by law, markets and public debate. At the outermost level there is no outside left, only the people within it deliberating. Today people hold the purposes of the organisations they work in. Whether agents should hold some of them, and under what checks, is the question that recursive self-improvement raises in practice.
+
+I came to this from [Votorola](http://reluk.ca/project/Votorola/home-2013.html), liquid democracy software I worked on with Michael Allan, and from the question critical theory asks of any rational system: whom does it serve, and which perspectives does it leave out? I don't think the tension between instrumental rationality and reflection on purpose can be resolved once. What can be built are the places where it gets worked out each time: forks on which an alternative can be tried, simulations of what a change would do, and records of what each decision relied on. The structures that check a learner have to learn and grow together with it, so if agents become much better at predicting and optimising, the parts of an organisation that decide what it's for have to get better at their work too, or the optimisation will decide for them.
+
+That's also what I mean when I talk about AGI. My position is that general self-improvement will be a property of organisations of people, agents and programs, not of a single model. If that's right, programming AGI means programming those organisations: their memory, their forks, their checks and the ways they change their own values.
+
+## What exists and what is open
+
+How much of this exists? Datahike is used in production. Klara is a research prototype: its guarantees are proved for a core calculus, while the machine that implements the calculus and the code it emits are trusted and tested, not proved. Foerster is beta software, and Simmis is in early access. None of it has been tested at the scale at which the questions above become urgent.
+
+Three questions remain open. Do the kinds of check form one hierarchy, from proof through measurement to review, with a common account of what each establishes? Can an organisation keep the record of what its decisions relied on complete enough for retirement to work, when most of its premises live outside its own state? And should agents hold some of an organisation's purposes, and if so, under what checks?
+
+## The wrong fork again
+
+One detail of the stale review is worth coming back to. The assistant read the main copy because that's the convention: in most repositories, `main` is where the current version lives. In Klara's repository it wasn't, because the work had moved into the agents' working copies and the convention hadn't moved with it. So the assistant followed the organisation's rule correctly, and the rule was out of date.
+
+<OpeningForks end />
+
+So was the mistake a failure of intelligence? I don't think so. The assistant needed what a program gets from Klara and a team gets from a well-run repository: the current version, a record of what was checked, and the premises of each judgement. And the rule that says where the current version lives had to change with the way the work was done, which is the coevolution of system and values again, at the smallest scale. Who checks a system that improves itself? For the changes that keep what it's for, a checker it can't rewrite. For the changes to what it's for, the organisation that holds its purpose, and that organisation has to grow as deliberately as the system does.

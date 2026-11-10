@@ -27,7 +27,7 @@ const fmt = (d: Date) => d.toLocaleDateString('en-GB', { year: 'numeric', month:
 
 <style>
   /* Block flow (not grid) so sidenotes can float into the margin beside their line. */
-  .prose { display: block; margin-top: 12px; }
+  .prose { display: block; margin-top: 12px; min-width: 0; }
   .prose > :global(* + *) { margin-top: 18px; }
   .prose :global(h2) { margin-top: 40px; }
   .prose :global(blockquote) { margin-left: 0; padding-left: 18px; border-left: 2px solid var(--evidence); color: var(--muted); }
@@ -35,4 +35,21 @@ const fmt = (d: Date) => d.toLocaleDateString('en-GB', { year: 'numeric', month:
   .prose :global(li + li) { margin-top: 6px; }
   .prose :global(.katex-display) { overflow-x: auto; overflow-y: hidden; padding-block: 4px; }
   .prose :global(.katex) { font-size: 1.05em; }
+  /* Tables are reference material: set in the system voice, smaller than the text, with rules. */
+  .prose :global(table) {
+    width: 100%; border-collapse: collapse; margin-top: 26px; margin-bottom: 8px;
+    font-family: var(--display); font-size: 14px; line-height: 1.4;
+  }
+  .prose :global(th) {
+    text-align: left; font-weight: 500; color: var(--ink); vertical-align: bottom;
+    padding: 0 14px 7px 0; border-bottom: 1px solid var(--ink);
+  }
+  .prose :global(td) { vertical-align: top; padding: 9px 14px 9px 0; border-bottom: 1px solid var(--rule); color: var(--muted); }
+  .prose :global(td:first-child) { color: var(--ink); }
+  .prose :global(th:last-child), .prose :global(td:last-child) { padding-right: 0; }
+  @media (max-width: 640px) {
+    /* Scroll the table, not the page. */
+    .prose :global(table) { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .prose :global(td), .prose :global(th) { min-width: 8.5rem; }
+  }
 </style>

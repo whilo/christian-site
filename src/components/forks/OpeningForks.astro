@@ -1,0 +1,32 @@
+---
+// The repository at the time of the review (simplified): main had stopped changing, the paper
+// was revised on a branch, and agents worked in further copies. `end` moves the mark from the
+// copy the assistant reviewed to the current version, for the essay's last section.
+import ForkFigure from './ForkFigure.astro';
+import { branch, merge, line, ground, dot, text } from './glyphs';
+interface Props { end?: boolean }
+const { end = false } = Astro.props;
+const W = 640, H = 226, M = 54, L = 136, A = 180;
+const copies = [[222, true], [306, false], [384, true], [462, true], [540, false]] as const;
+const svg = [
+  line(20, M, 186, M, 'st'), line(186, M, 612, M, 'st idle'),
+  ...[54, 98, 142, 186].map((x) => dot(x, M)),
+  text(20, M - 16, 'main', 'k mono'), text(232, M - 16, 'no change for ten days'),
+  branch(120, M, L, 612, 'tr', 40), dot(120, M),
+  ...[196, 594].map((x) => dot(x, L, 'p')),
+  text(172, L - 16, 'klara-lk', 'b mono'), text(240, L - 16, 'where the paper was being revised'),
+  ...copies.flatMap(([x, merged]) => merged
+    ? [branch(x, L, A, x + 30, 'tr', 18), merge(x + 30, A, L, x + 52, 'tr'), dot(x + 52, L, 'p'), dot(x, L, 'p')]
+    : [branch(x, L, A, x + 34, 'th', 18), ground(x + 34, A), dot(x, L, 'p')]),
+  text(222, A + 30, "agents' working copies, merged into the branch or dropped", 's'),
+  end
+    ? `<rect class="mark" x="${612 - 13}" y="${L - 13}" width="26" height="26" rx="3" />` + text(626, L - 40, 'the current version', 'o', 'end')
+    : `<rect class="mark" x="${612 - 13}" y="${M - 13}" width="26" height="26" rx="3" />` + text(586, M + 32, 'the copy the assistant reviewed', 'o', 'end'),
+].join('');
+---
+<ForkFigure width={W} height={H} label={end ? 'The same repository, with the current version marked on the branch where the work happened' : 'A repository in which main has not changed for ten days while the paper is revised on a branch; the assistant reviewed main'}>
+  <Fragment set:html={svg} />
+  <Fragment slot="caption">{end
+    ? 'The same repository, with the mark where it should have been. Recording where the current version lives is itself a rule that has to change with how the work is done.'
+    : "Klara's repository at the time of the review, simplified. Time runs left to right. The paper was revised on a branch (blue) while main (black) had not changed for ten days, and agents worked in further copies that were merged into the branch or dropped. The assistant reviewed main."}</Fragment>
+</ForkFigure>

@@ -1,0 +1,30 @@
+---
+// The system and its values change together: an improvement is checked against the current
+// values; a change to the values is tried on a fork and decided by people, and it retires the
+// results that relied on the old values.
+import ForkFigure from './ForkFigure.astro';
+import { branch, merge, line, values, ground, gate, council, dot, cross, text } from './glyphs';
+const W = 640, H = 252, V = 46, S = 200;
+const box = (x: number, y: number, w: number, h: number) =>
+  `<rect class="box solid" x="${x}" y="${y}" width="${w}" height="${h}" rx="3" style="fill: var(--paper)" />`;
+const svg = [
+  values(20, 620, V), text(20, V - 18, 'values', 'k'),
+  line(20, S, 620, S, 'st'), text(20, S + 28, 'system', 'k'),
+  // an improvement, checked against the current values
+  branch(70, S, 160, 190, 'tr', 36), line(200, 150, 200, V + 4, 'premise'), gate(200, 160),
+  merge(204, 160, S, 250, 'tr'), dot(70, S), dot(250, S), dot(200, V, 'o'),
+  text(262, 168, 'an improvement, checked against the current values', 's'),
+  // a change to the values, tried on a fork and decided by people
+  branch(320, V, 100, 470, 'th', 40), box(372, 88, 64, 24), text(404, 104, 'simulate', 's b', 'middle'),
+  council(482, 100), merge(491, 100, V, 532, 'tr'), dot(320, V, 'o'), dot(532, V, 'o'),
+  text(330, 132, 'a change to the values, tried on a fork', 's'),
+  text(330, 147, 'and decided by people with the authority', 's'),
+  // it retires what relied on the old values
+  line(594, V + 6, 594, S - 8, 'rt thin'), cross(594, S),
+  text(620, S + 28, 'results that relied on the old values are retired', 's r', 'end'),
+].join('');
+---
+<ForkFigure width={W} height={H} label="Two wires, the values and the system. An improvement to the system is checked against the values and adopted. Later a change to the values is tried on a fork, decided by people, and retires results on the system that relied on the old values">
+  <Fragment set:html={svg} />
+  <Fragment slot="caption">An improvement is checked mechanically against the current values (dotted line). A change to the values goes through people instead, after it has been tried on a fork, and it retires the results that relied on the old values (vermilion).</Fragment>
+</ForkFigure>

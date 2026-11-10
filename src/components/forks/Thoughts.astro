@@ -1,0 +1,31 @@
+---
+// Most forks are thoughts: they are run for an answer and dropped. A few are attempts, and an
+// attempt is adopted only if it passes its check.
+import ForkFigure from './ForkFigure.astro';
+import { branch, merge, line, ground, gate, dot, text } from './glyphs';
+const W = 640, H = 300, S = 262, F = 80;
+const box = (x: number, y: number, w: number, h: number, cls = 'box') =>
+  `<rect class="${cls}" x="${x}" y="${y}" width="${w}" height="${h}" rx="3" style="fill: var(--paper)" />`;
+const svg = [
+  line(20, S, 620, S, 'st'), text(20, S + 26, 'accepted state', 'k s'),
+  // a coarse-grained simulation
+  branch(48, S, 40, 300, 'th', 70), box(166, 28, 84, 24, 'box solid'), text(208, 44, 'coarse model', 's b', 'middle'),
+  ground(300, 40), text(318, 44, 'a cheaper, coarse-grained simulation', 's'), dot(48, S),
+  // speculation inside speculation
+  branch(96, S, 108, 404, 'th', 64), box(170, 80, 204, 56),
+  branch(210, 108, 93, 304, 'th', 26), ground(304, 93), branch(210, 108, 123, 334, 'th', 26), ground(334, 123), dot(210, 108, 'p'),
+  ground(404, 108), text(170, 72, 'speculation inside speculation', 's'), dot(96, S),
+  // a thought
+  branch(144, S, 172, 280, 'th', 56), ground(280, 172), text(298, 176, 'a thought: run it, use the answer, drop it', 's'), dot(144, S),
+  // an attempt that fails its check
+  branch(196, S, 220, 334, 'tr', 46), gate(344, 220), line(348, 220, 366, 220, 'rt'), ground(366, 220, 'rt'),
+  text(384, 224, 'fails its check', 's'), dot(196, S),
+  // an attempt that passes and is adopted
+  branch(476, S, 220, 552, 'tr', 34), gate(562, 220), merge(566, 220, S, 600, 'tr'), dot(476, S), dot(600, S),
+  text(484, 205, 'passes and is adopted', 's'),
+].join('');
+---
+<ForkFigure width={W} height={H} label="Forks from the accepted state: several thoughts that are dropped, one of them nested and one coarse-grained, an attempt that fails its check and an attempt that passes and is adopted">
+  <Fragment set:html={svg} />
+  <Fragment slot="caption">Most forks are thoughts (dashed): they run, the answer is used, and the fork is dropped. A thought can contain its own forks, or run a coarser model. Only attempts (solid) ask to be adopted, and only after a check (ochre).</Fragment>
+</ForkFigure>

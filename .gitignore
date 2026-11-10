@@ -14,5 +14,3 @@ WRITING.md
 cljs/
 deps.edn
 
-# Draft essays stay local until published
-src/content/writing/who-checks-a-system-that-improves-itself.mdx

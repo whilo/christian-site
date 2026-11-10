@@ -1,0 +1,36 @@
+---
+// Programming as inference, at two scales: a programmer's REPL loop (evaluate, observe, edit),
+// the same loop run by an agent on a fork and checked before adoption, and the agent editing
+// its own tools and evaluation, where the question of the essay starts.
+import ForkFigure from './ForkFigure.astro';
+import { branch, merge, line, gate, dot, text } from './glyphs';
+const W = 640, H = 320, A = 56, B = 226, LB = 182, C = 288;
+const obs = (x: number, y: number) => `<circle class="gate" cx="${x}" cy="${y}" r="3.8" />`;
+// one turn of the loop on wire y: a thought to the side (dir = +1 below, -1 above), an observation, an edit back
+const turn = (x: number, y: number, dir: number, w = 36, cls = '') => {
+  const t = y + dir * 30;
+  return [branch(x, y, t, x + w, 'th', 14), obs(x + w + 6, t), merge(x + w + 10, t, y, x + w + 40, 'tr'), dot(x, y, 'p'), dot(x + w + 40, y, cls)].join('');
+};
+const svg = [
+  // a programmer at the REPL
+  line(20, A, 620, A, 'st'), text(20, A - 18, 'a program, edited at the REPL', 'k s'),
+  ...[70, 196, 322, 448].map((x) => turn(x, A, 1)),
+  text(70, A + 56, 'evaluate, observe, edit, again', 's'),
+  // an agent running the same loop on a fork
+  line(20, B, 620, B, 'st'), text(20, B + 26, 'a program, changed by an agent', 'k s'),
+  branch(54, B, LB, 470, 'tr', 34), dot(54, B),
+  ...[112, 196, 280].map((x) => turn(x, LB, -1, 30, 'p')),
+  text(100, LB + 26, 'an agent runs the loop on a fork', 's b'),
+  gate(482, LB), merge(486, LB, B, 530, 'tr'), dot(530, B), text(470, LB - 18, 'checked, then adopted', 's'),
+  // the agent edits its own tools and evaluation
+  `<path class="tr" d="M372 ${LB} C 400 ${LB} 392 ${C} 424 ${C}" />`, dot(372, LB, 'p'),
+  line(330, C, 620, C, 'st idle'),
+  `<rect class="gate-o" x="452" y="${C - 12}" width="18" height="24" rx="2" />`, text(461, C + 5, '?', 'o', 'middle'),
+  text(482, C - 16, 'who checks this?', 'o s'),
+  text(330, C + 26, "the agent's own tools, prompts and evaluation", 's'),
+].join('');
+---
+<ForkFigure width={W} height={H} label="Three rows. A programmer evaluates, observes and edits a program in a loop. An agent runs the same loop on a fork of a program, and its result is checked before it is adopted. The agent also edits its own tools and evaluation, at a check marked with a question mark">
+  <Fragment set:html={svg} />
+  <Fragment slot="caption">The same loop at two scales. A programmer evaluates a form, observes the answer (ochre) and edits the program (top). An agent runs the loop on a fork, and its result is checked before it is adopted (middle). When the agent can also edit its own tools and evaluation (bottom), the loop closes on itself, and something has to check that edit.</Fragment>
+</ForkFigure>
