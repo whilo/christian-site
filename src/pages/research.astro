@@ -1,0 +1,172 @@
+---
+import Base from '../layouts/Base.astro';
+import { strands, thesis, talks } from '../data/research';
+import DualCode from '../components/DualCode.astro';
+import { visiblePosts } from '../data/posts';
+
+// Further reading: only posts approved for this site (development also shows pending ones).
+const readingFor = (id: string) => visiblePosts().filter((p) => p.strands.includes(id));
+
+// Figures and code shown with each strand of the agenda.
+const klara = `;; the meaning
+(defn power [n x]
+  (if (= n 0) 1 (* x (power (dec n) x))))
+
+;; a program that writes a program
+(defn power-gen [n x]
+  (if (= n 0)
+    (code 1)
+    (code (* (esc x) (esc (power-gen (dec n) x))))))
+
+;; use the generator as an optimiser; Klara checks it against power
+(compiler/prepare (code (fn [x] (power 3 x)))
+                  {:recipe (fn [_] (code (fn [x] (esc (power-gen 3 (code x))))))})
+;; => {:status :ready ...}
+
+;; a wrong optimiser is rejected
+(compiler/prepare (code (fn [x] (power 3 x)))
+                  {:recipe (fn [_] (code (fn [x] (* x x))))})
+;; => {:status :rejected :rule :L4.check.not-equivalent ...}`;
+
+const foerster = `(defn model []
+  (spin
+    (let [mu (sample (dist/normal 0.0 1.0) :id :mu)]
+      (observe (dist/normal mu 1.0) 1.0 :id :y)
+      mu)))
+
+;; each sample and observe site is a savepoint;
+;; particles fork from it, and resampling prunes and copies them
+(def posterior
+  (sp/with-context (sp/create-execution-context)
+    @(infer/smc-infer (model) 1000)))`;
+---
+<Base title="Research" current="research" code reading description="Research agenda, papers, figures and software of Christian Weilbach: learning structure, inference over forkable worlds, and self-improvement under verification.">
+  <div class="spread section">
+    <div class="main">
+      <h1>Research</h1>
+      <p class="lede">
+        My research has three parts, and each answers part of one question: how can a learning system improve itself
+        and stay correct? The first
+        is about structure that makes prediction cheap, the second about simulations that can be forked and compared,
+        and the third about checks that a self-modifying system cannot bypass.
+      </p>
+      <nav class="toc" aria-label="Parts of the agenda">
+        {strands.map((s) => <a href={`#${s.id}`}>{s.title}</a>)}
+        <a href="#talks">Talks</a>
+      </nav>
+    </div>
+  </div>
+
+  {strands.map((s) => (
+    <section class="spread section strand" id={s.id}>
+      <div class="main">
+        <h2>{s.title}</h2>
+        <p>{s.summary}</p>
+
+        {s.id === 'structure' && (
+          <>
+            <figure>
+              <div class="plate"><img src="/research/gsdm-overview.svg" alt="From a graphical model to an attention mask to a diffusion process" loading="lazy" /></div>
+              <figcaption>In a graphically structured diffusion model, the graphical model of a problem becomes the attention mask of a transformer, which is trained as a diffusion model.</figcaption>
+            </figure>
+            <figure>
+              <video src="/research/gsdm-sudoku.mp4" poster="/research/gsdm-sudoku-poster.jpg" muted loop playsinline controls preload="none" aria-label="A diffusion model solving Sudoku"></video>
+              <figcaption>Solving Sudoku by diffusion. The structured model produces valid Sudokus 98% of the time unconditionally, and 96% of the time with 16 of 81 cells given.</figcaption>
+            </figure>
+            <figure>
+              <div class="plate"><img src="/research/scnf-compilation.svg" alt="A probabilistic program compiled into a faithful inverse graph that structures a continuous normalizing flow" loading="lazy" /></div>
+              <figcaption>A compiler turns a probabilistic program into a faithful inverse graph, which constrains a continuous normalizing flow. The structured flow needs 7,725 weights instead of 18,679, and learns faster.</figcaption>
+            </figure>
+          </>
+        )}
+
+        {s.id === 'simulation' && (
+          <>
+            <figure>
+              <img src="/research/stuttgart-move-milaneo.png" alt="A simulated Stuttgart: map of districts with the effect of moving a shopping centre" loading="lazy" />
+              <figcaption>A simulated Stuttgart of 936,597 people, with nine parameters inferred from the city's published retail turnover. Moving a shopping centre creates a fork of the city, and the two versions share almost all of their state and computation.</figcaption>
+            </figure>
+            <figure>
+              <DualCode code={foerster} context="(require '[org.replikativ.spindel.spin.cps :refer [spin]])" />
+              <figcaption>A model in Foerster. Inference forks the running program at each sample and observe site instead of re-running it.</figcaption>
+            </figure>
+          </>
+        )}
+
+        {s.id === 'self-improvement' && (
+          <figure>
+            <DualCode code={klara} context="(require '[klara.stage :refer [code esc]] '[klara.compiler :as compiler])" />
+            <figcaption>In Klara, optimisers are ordinary programs that write programs. Their output is adopted only when a small trusted kernel has shown that it means the same as the code it replaces.</figcaption>
+          </figure>
+        )}
+
+        <h3>Papers</h3>
+        <ul class="entries">
+          {s.papers.map((p) => (
+            <li>
+              {p.url ? <a class="title" href={p.url}>{p.title}</a> : <span class="title">{p.title}</span>}
+              <span class="meta">{p.authors}. <span class="venue">{p.venue}</span>{p.year && `, ${p.year}`}.{p.note && <span class="note"> {p.note[0].toUpperCase() + p.note.slice(1)}.</span>}</span>
+            </li>
+          ))}
+        </ul>
+
+        <h3>Software</h3>
+        <ul class="entries">
+          {s.software.map((sw) => (
+            <li><a class="title" href={sw.url}>{sw.name}</a><span class="meta">{sw.what}</span></li>
+          ))}
+        </ul>
+
+        {readingFor(s.id).length > 0 && (
+          <>
+            <h3>Further reading</h3>
+            <ul class="entries">
+              {readingFor(s.id).map((p) => (
+                <li>
+                  <a class="title" href={p.url}>{p.title}</a>
+                  <span class="meta">{p.site}, {p.date.slice(0, 7)}{p.pending && <span class="pending"> · pending review</span>}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </section>
+  ))}
+
+  <section class="spread section" id="thesis">
+    <div class="main">
+      <h2>Doctoral thesis</h2>
+      <p>
+        My <a href={thesis.url}>thesis</a> at the University of British Columbia, with <a href={thesis.advisor.url}>{thesis.advisor.name}</a>
+        in the <a href={thesis.group.url}>{thesis.group.name} group</a>, shows how structural knowledge about an inference problem
+        can be mapped automatically into the mechanism that solves it: from a compiler that extracts a faithful inverse graph,
+        through structured normalizing flows, to graphically structured diffusion models that scale to Sudoku, sorting and
+        matrix factorisation, and connect to simulation-based inference.
+      </p>
+    </div>
+  </section>
+
+  <section class="spread section" id="talks">
+    <div class="main">
+      <h2>Talks</h2>
+      <ul class="entries">
+        {talks.map((t) => (
+          <li>
+            {t.url ? <a class="title" href={t.url}>{t.title}</a> : <span>{t.title}</span>}
+            <span class="meta">{t.where}{t.date && `, ${t.date}`}.</span>
+          </li>
+        ))}
+      </ul>
+      <p class="small">Full list of publications on <a href="https://scholar.google.com/citations?user=6foQfZwAAAAJ&hl=en">Google Scholar</a>.</p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .toc { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 17px; }
+  .strand h3 { margin-top: 14px; }
+  .strand figure { margin-block: 6px; }
+  video { background: var(--plate); }
+  .pending { color: var(--surprise); }
+</style>

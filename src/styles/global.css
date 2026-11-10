@@ -1,0 +1,158 @@
+/* Layout: one left-aligned reading column with a wide right margin for sidenotes,
+   contact and figures; collapses to a single column on phones.
+   Colour: the page itself is grey; colour is information. Blue marks prediction and
+   what is live or selected (as in Simmis), ochre marks evidence, vermilion surprise. */
+:root {
+  --paper: #F8F8F7;
+  --ink: #1A1A19;
+  --muted: #6B6B6A;
+  --rule: #E0DFDD;
+  --plate: #FFFFFF;            /* behind paper figures with white backgrounds */
+  --predict: #2563EB;          /* predictions, selection, links */
+  --evidence: #B07D2A;         /* evidence */
+  --surprise: #D9472B;         /* prediction error, used rarely */
+  --serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --display: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif; /* headlines */
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --measure: 64ch;
+  --margin: 17rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #131313; --ink: #E4E4E2; --muted: #8E8E8B; --rule: #2A2A29; --plate: #ECECEA;
+    --predict: #7AA2F7; --evidence: #D8A64C; --surprise: #FF6B4E; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #131313; --ink: #E4E4E2; --muted: #8E8E8B; --rule: #2A2A29; --plate: #ECECEA;
+  --predict: #7AA2F7; --evidence: #D8A64C; --surprise: #FF6B4E; color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--paper); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-optical-sizing: auto;
+  font-size: 19px;
+  line-height: 1.58;
+  padding-left: max(18px, env(safe-area-inset-left, 0px));
+  padding-right: max(18px, env(safe-area-inset-right, 0px));
+}
+img, video, svg { max-width: 100%; height: auto; }
+/* Links stay in the text colour with a quiet underline; blue marks the one you are on. */
+a { color: inherit; text-decoration-line: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;
+    text-decoration-color: color-mix(in srgb, var(--ink) 28%, transparent); }
+a:hover { color: var(--predict); text-decoration-color: var(--predict); }
+:focus-visible { outline: 2px solid var(--predict); outline-offset: 3px; }
+
+h1, h2, h3 { font-family: var(--display); font-weight: 440; letter-spacing: -0.022em; line-height: 1.1; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(40px, 6vw, 66px); letter-spacing: -0.03em; font-weight: 420; }
+h2 { font-size: clamp(25px, 3vw, 31px); }
+h3 { font-size: 20px; }
+p { margin: 0; }
+code, pre { font-family: var(--mono); font-size: 0.78em; font-variant-ligatures: none; }
+pre {
+  margin: 0; padding: 14px 16px; overflow-x: auto; line-height: 1.5;
+  background: color-mix(in srgb, var(--rule) 45%, var(--paper));
+  border-left: 2px solid var(--predict);
+}
+
+/* Page frame */
+.site { max-width: calc(var(--measure) + var(--margin) + 4rem); margin: 0 auto; }
+.masthead {
+  display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 24px;
+  padding-block: 28px 0;
+}
+.masthead .home { color: var(--ink); text-decoration: none; font-family: var(--display); font-weight: 500; font-size: 18px; letter-spacing: -0.01em; }
+.masthead nav { display: flex; gap: 22px; font-family: var(--display); font-size: 15px; letter-spacing: -0.005em; }
+.masthead nav a { color: var(--muted); text-decoration: none; }
+.masthead nav a[aria-current="page"], .masthead nav a:hover { color: var(--ink); }
+
+.footer { padding-block: 64px 48px; color: var(--muted); font-family: var(--display); font-size: 13.5px; display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.footer a { color: var(--muted); }
+
+/* The two-column grid used by pages */
+.spread {
+  display: grid;
+  grid-template-columns: minmax(0, var(--measure)) var(--margin);
+  column-gap: 4rem;
+  align-items: start;
+}
+.spread > .main { min-width: 0; display: grid; gap: 22px; }
+.spread > .aside { min-width: 0; display: grid; gap: 18px; font-size: 16px; color: var(--muted); }
+.section { padding-block: 56px 0; }
+.section > h2 { margin-bottom: 18px; }
+.lede { font-size: 23px; line-height: 1.45; }
+.muted { color: var(--muted); }
+.small { font-size: 16px; }
+
+@media (max-width: 980px) {
+  .spread { grid-template-columns: minmax(0, 1fr); }
+  .spread > .aside { order: -1; }
+}
+@media (max-width: 600px) {
+  body { font-size: 18px; }
+  .lede { font-size: 20px; }
+}
+
+/* Code: Superficie by default, Clojure one tab away */
+.code-dual { border: 1px solid var(--rule); }
+.code-dual pre { border-left: 0; }
+.code-dual-tabs { display: flex; align-items: center; gap: 4px; padding: 0 8px; border-bottom: 1px solid var(--rule); font-size: 15px; }
+.code-dual-tab {
+  appearance: none; background: none; border: 0; border-bottom: 2px solid transparent;
+  padding: 7px 10px; font: inherit; color: var(--muted); cursor: pointer;
+}
+.code-dual-tab:hover { color: var(--ink); }
+.code-dual-what { margin-left: auto; color: var(--muted); font-size: 14px; font-style: italic; }
+.code-dual-panel { display: none; }
+.code-dual-panel.active { display: block; }
+.code-dual-tab.active { color: var(--ink); border-bottom-color: var(--predict); }
+html[data-code-lang="clojure"] .code-dual-panel[data-lang="clojure"],
+html[data-code-lang="superficie"] .code-dual-panel[data-lang="superficie"] { display: block; }
+html[data-code-lang="clojure"] .code-dual-panel[data-lang="superficie"],
+html[data-code-lang="superficie"] .code-dual-panel[data-lang="clojure"] { display: none; }
+html[data-code-lang="clojure"] .code-dual-tab[data-lang="clojure"],
+html[data-code-lang="superficie"] .code-dual-tab[data-lang="superficie"] { color: var(--ink); border-bottom-color: var(--predict); }
+html[data-code-lang="clojure"] .code-dual-tab[data-lang="superficie"],
+html[data-code-lang="superficie"] .code-dual-tab[data-lang="clojure"] { color: var(--muted); border-bottom-color: transparent; }
+/* Highlighting from the page palette: definitions in teal, literals in ochre, comments muted. */
+.hljs { background: transparent; color: var(--ink); }
+.hljs-comment { color: var(--muted); font-style: italic; }
+.hljs-keyword, .hljs-built_in, .hljs-meta { color: var(--predict); }
+.hljs-title, .hljs-title.function_, .hljs-title.class_ { color: var(--ink); font-weight: 500; }
+.hljs-string, .hljs-number, .hljs-literal, .hljs-regexp { color: var(--evidence); }
+.hljs-symbol { color: color-mix(in srgb, var(--evidence) 75%, var(--ink)); }
+.hljs-operator, .hljs-punctuation { color: var(--muted); }
+
+/* Lists of papers and projects */
+.entries { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.entries li { display: grid; gap: 2px; }
+.entries .title { color: var(--ink); text-decoration: none; }
+.entries .title:hover { color: var(--predict); }
+.entries .meta { font-family: var(--display); font-size: 14px; line-height: 1.45; color: var(--muted); }
+.entries .meta .note { color: var(--ink); }
+.entries .meta .venue { font-family: var(--serif); font-size: 15.5px; }
+.entries .venue { font-style: italic; }
+
+/* Figures */
+figure { margin: 0; display: grid; gap: 8px; }
+figure .plate { background: var(--plate); padding: 12px; }
+figure img, figure video { display: block; width: 100%; }
+figcaption { font-family: var(--display); font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+
+/* Two voices. The sans speaks for the system: navigation, labels, data, captions.
+   The serif carries the argument; its italic is the reflective voice, the moment
+   the text steps back and asks what something is for. */
+.reflect { font-style: italic; }
+.reflect::before {
+  content: ""; display: inline-block; width: 0.9em; height: 1.5px; margin: 0 0.35em 0.28em 0;
+  background: var(--surprise); vertical-align: middle;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

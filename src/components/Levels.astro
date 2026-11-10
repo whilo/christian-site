@@ -1,0 +1,73 @@
+---
+// The levels of the stack as a small interactive diagram: predictions travel down,
+// evidence travels up, and each level runs the same loop. Selecting a level shows
+// the work at that level. Without JavaScript every level is shown open.
+import { levels } from '../data/research';
+---
+<figure class="levels" data-levels>
+  <div class="rail" aria-hidden="true"><i class="r-predict"></i><i class="r-evidence"></i><i class="r-reflect"></i></div>
+  <ol>
+    {levels.map((level, i) => (
+      <li class:list={[{ open: i === 2 }]}>
+        <button type="button" aria-expanded={i === 2 ? 'true' : 'false'} aria-controls={`level-${i}`}>
+          <span class="name">{level.name}</span>
+          <span class="what">{level.what}</span>
+        </button>
+        <div id={`level-${i}`} class="detail">
+        <p class="purpose">{level.purpose}</p>
+        <ul class="projects">
+          {level.projects.map((p) => (
+            <li><a href={p.url}>{p.name}</a> <span class="muted">{p.what}</span></li>
+          ))}
+        </ul>
+        </div>
+      </li>
+    ))}
+  </ol>
+  <figcaption>
+    Predictions run down the levels (blue) and evidence runs up (ochre). The dashed line stands for the question of what each level is for, which comes up again at every level.
+  </figcaption>
+</figure>
+
+<style>
+  .levels { grid-template-columns: 26px minmax(0, 1fr); column-gap: 14px; }
+  .levels figcaption { grid-column: 2; margin-top: 6px; }
+  .rail { position: relative; }
+  .rail i { position: absolute; top: 2px; bottom: 2px; width: 2px; }
+  .rail .r-predict { left: 4px; background: var(--predict); }
+  .rail .r-evidence { left: 11px; background: var(--evidence); }
+  .rail .r-reflect { left: 20px; width: 1px; background: repeating-linear-gradient(var(--surprise) 0 6px, transparent 6px 11px); }
+  ol { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--ink); }
+  ol > li { border-bottom: 1px solid var(--ink); }
+  button {
+    all: unset; cursor: pointer; display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 4px 18px;
+    width: 100%; padding: 12px 0; box-sizing: border-box;
+  }
+  button:focus-visible { outline: 2px solid var(--predict); outline-offset: 2px; }
+  .name { font-family: var(--display); font-size: 17px; letter-spacing: -0.01em; }
+  .what { color: var(--muted); font-size: 16.5px; line-height: 1.45; }
+  button:hover .name, li.open .name { color: var(--predict); }
+  .projects { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 16.5px; }
+  .detail { display: none; padding: 0 0 14px calc(11rem + 18px); }
+  li.open .detail { display: grid; gap: 8px; }
+  .purpose { margin: 0; color: var(--ink); font-style: italic; }
+  :global(html:not(.js)) .detail { display: grid; }
+  @media (max-width: 600px) {
+    button { grid-template-columns: 1fr; }
+    .detail { padding-left: 0; }
+  }
+</style>
+
+<script>
+  document.documentElement.classList.add('js');
+  for (const fig of document.querySelectorAll('[data-levels]')) {
+    const items = [...fig.querySelectorAll('ol > li')];
+    for (const li of items) {
+      li.querySelector('button')!.addEventListener('click', () => {
+        const open = !li.classList.contains('open');
+        li.classList.toggle('open', open);
+        li.querySelector('button')!.setAttribute('aria-expanded', String(open));
+      });
+    }
+  }
+</script>

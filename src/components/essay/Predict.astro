@@ -1,0 +1,60 @@
+---
+// Predict, then reveal. The reader commits to a guess before the answer, its explanation
+// and any figure in the slot are shown. Committing to a prediction is what makes the
+// answer informative. Without JavaScript everything is shown.
+interface Props {
+  question: string;
+  options: string[];
+  answer: number; // index into options
+}
+const { question, options, answer } = Astro.props;
+---
+<figure class="predict" data-predict data-answer={answer}>
+  <p class="q">{question}</p>
+  <div class="options" role="group" aria-label="Your prediction">
+    {options.map((o, i) => <button type="button" data-i={i}>{o}</button>)}
+  </div>
+  <p class="verdict" aria-live="polite"></p>
+  <div class="reveal">
+    <slot />
+  </div>
+</figure>
+
+<style>
+  .predict { gap: 14px; padding: 18px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); margin-block: 8px; }
+  .q { font-size: 21px; line-height: 1.35; }
+  .options { display: flex; flex-wrap: wrap; gap: 10px; }
+  button {
+    font: inherit; font-size: 17px; color: var(--ink); background: transparent; cursor: pointer;
+    border: 1px solid var(--muted); padding: 6px 14px; border-radius: 999px;
+  }
+  button:hover:not(:disabled) { border-color: var(--predict); color: var(--predict); }
+  button:disabled { cursor: default; }
+  button.chosen { border-color: var(--surprise); color: var(--surprise); }
+  button.right { border-color: var(--predict); background: var(--predict); color: var(--paper); }
+  .verdict:empty { display: none; }
+  .verdict { font-style: italic; color: var(--muted); }
+  :global(html.js) .predict:not(.answered) .reveal { display: none; }
+  .reveal { display: grid; gap: 14px; }
+</style>
+
+<script>
+  document.documentElement.classList.add('js');
+  for (const fig of document.querySelectorAll<HTMLElement>('[data-predict]')) {
+    const answer = +fig.dataset.answer!;
+    const buttons = [...fig.querySelectorAll<HTMLButtonElement>('button')];
+    const verdict = fig.querySelector('.verdict')!;
+    for (const b of buttons) {
+      b.addEventListener('click', () => {
+        const i = +b.dataset.i!;
+        buttons.forEach((x) => { x.disabled = true; x.setAttribute('aria-pressed', String(x === b)); });
+        buttons[answer].classList.add('right');
+        if (i !== answer) b.classList.add('chosen');
+        verdict.textContent = i === answer
+          ? 'You predicted this.'
+          : 'You did not predict this.';
+        fig.classList.add('answered');
+      });
+    }
+  }
+</script>

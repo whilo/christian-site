@@ -1,0 +1,15 @@
+---
+// A Clojure snippet shown in Superficie by default, with the Clojure source one tab away.
+// Both tabs are the same program: Superficie roundtrips exactly to the Clojure forms.
+//   <DualCode code={src} context="(require '[org.replikativ.spindel.spin.cps :refer [spin]])" />
+// `context` names the requires a snippet assumes, so library macros render as blocks.
+import { renderWithComments, makeTabbedHtml } from '../lib/superficie.mjs';
+
+interface Props { code: string; context?: string }
+const { code, context } = Astro.props;
+const superficie = renderWithComments(code, context);
+const html = superficie
+  ? makeTabbedHtml(code, superficie)
+  : `<pre><code class="language-clojure">${code.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</code></pre>`;
+---
+<Fragment set:html={html} />

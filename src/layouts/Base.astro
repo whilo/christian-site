@@ -1,0 +1,82 @@
+---
+import '../styles/global.css';
+import DevTypeLab from '../components/DevTypeLab.astro';
+import ReadingTime from '../components/ReadingTime.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+  current?: 'home' | 'research' | 'writing' | 'about';
+  code?: boolean; // load highlighting and Superficie/Clojure tabs
+  reading?: boolean; // show the reading-time estimate that learns the reader's pace
+}
+const {
+  title,
+  description = 'Christian Weilbach works on learning systems that simulate, check and adopt changes to themselves, from inference and compilers to organisations of people and agents.',
+  current,
+  code = false,
+  reading = false,
+} = Astro.props;
+const pageTitle = title ? `${title} · Christian Weilbach` : 'Christian Weilbach';
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <script is:inline>
+      // The reader's choice of Superficie or Clojure, applied before paint (shared key with simm.is).
+      try { var l = localStorage.getItem('codeDualLang'); if (l === 'clojure' || l === 'superficie') document.documentElement.setAttribute('data-code-lang', l); } catch (e) {}
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate" type="application/rss+xml" title="Christian Weilbach" href="/rss.xml" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL('/christian_squamish.png', Astro.site)} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=Schibsted+Grotesk:wght@400..600&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+    {code && (
+      <>
+        <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+        <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/clojure.min.js"></script>
+        <script is:inline src="/scripts/superficie.hljs.js"></script>
+        <script is:inline src="/scripts/code-tabs.js" defer></script>
+      </>
+    )}
+  </head>
+  <body>
+    <div class="site">
+      <header class="masthead">
+        <a class="home" href="/">Christian Weilbach</a>
+        <nav aria-label="Site">
+          <a href="/research" aria-current={current === 'research' ? 'page' : undefined}>Research</a>
+          <a href="/writing" aria-current={current === 'writing' ? 'page' : undefined}>Writing</a>
+          <a href="/about" aria-current={current === 'about' ? 'page' : undefined}>About</a>
+          <a href="/#contact">Contact</a>
+        </nav>
+      </header>
+      <main>
+        <slot />
+      </main>
+      <footer class="footer">
+        <span>Christian Weilbach</span>
+        <a href="https://github.com/whilo">GitHub</a>
+        <a href="https://scholar.google.com/citations?user=6foQfZwAAAAJ&hl=en">Google Scholar</a>
+        <a href="https://www.linkedin.com/in/christian-weilbach-1bab251b0/">LinkedIn</a>
+        <a href="/cv">CV</a>
+        <a href="/rss.xml">RSS</a>
+      </footer>
+    </div>
+    {reading && <ReadingTime />}
+    {import.meta.env.DEV && <DevTypeLab />}
+  </body>
+</html>

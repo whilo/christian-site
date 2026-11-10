@@ -1,0 +1,68 @@
+---
+// Development only: try headline typefaces and palettes on the real pages.
+// Rendered by Base.astro when import.meta.env.DEV; never part of a build.
+const fonts = [
+  { id: 'schibsted', name: 'Schibsted Grotesk (current)', family: '"Schibsted Grotesk", sans-serif', weight: 440, track: '-0.022em', css: '' },
+  { id: 'newsreader', name: 'Newsreader', family: '"Newsreader", serif', weight: 360, track: '-0.018em', css: '' },
+  { id: 'fraunces', name: 'Fraunces', family: '"Fraunces", serif', weight: 340, track: '-0.02em', css: 'Fraunces:opsz,wght@9..144,300..600' },
+  { id: 'instrument', name: 'Instrument Serif', family: '"Instrument Serif", serif', weight: 400, track: '-0.01em', css: 'Instrument+Serif:ital@0;1' },
+  { id: 'spectral', name: 'Spectral', family: '"Spectral", serif', weight: 300, track: '-0.01em', css: 'Spectral:wght@300;400' },
+  { id: 'bricolage', name: 'Bricolage Grotesque', family: '"Bricolage Grotesque", sans-serif', weight: 380, track: '-0.03em', css: 'Bricolage+Grotesque:opsz,wght@12..96,300..600' },
+  { id: 'plexcond', name: 'IBM Plex Sans Condensed', family: '"IBM Plex Sans Condensed", sans-serif', weight: 300, track: '-0.01em', css: 'IBM+Plex+Sans+Condensed:wght@300;400' },
+];
+const palettes = [
+  { id: 'grey-blue', name: 'Grey, blue (current)' },
+  { id: 'grey-teal', name: 'Grey, teal' },
+  { id: 'grey-ink', name: 'Grey, ink only' },
+];
+const href = 'https://fonts.googleapis.com/css2?' + fonts.filter((f) => f.css).map((f) => `family=${f.css}`).join('&') + '&display=swap';
+---
+<link rel="stylesheet" href={href} />
+<div class="typelab" data-typelab data-fonts={JSON.stringify(fonts)}>
+  <label>Headlines
+    <select id="typelab-font">{fonts.map((f) => <option value={f.id}>{f.name}</option>)}</select>
+  </label>
+  <label>Palette
+    <select id="typelab-palette">{palettes.map((p) => <option value={p.id}>{p.name}</option>)}</select>
+  </label>
+</div>
+
+<style is:global>
+  .typelab {
+    position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: 12px; z-index: 50;
+    display: grid; gap: 6px; padding: 10px 12px; font: 13px/1.3 system-ui, sans-serif;
+    background: var(--paper); border: 1px solid var(--rule); color: var(--muted);
+  }
+  .typelab label { display: grid; gap: 2px; }
+  .typelab select { font: inherit; color: var(--ink); background: var(--paper); }
+  html[data-palette="grey-teal"] { --predict: #2D6A73; }
+  html[data-palette="grey-ink"] { --predict: var(--ink); }
+  @media (prefers-color-scheme: dark) {
+    html[data-palette="grey-teal"] { --predict: #63B4BE; }
+  }
+  h1, h2, h3 { font-weight: var(--display-weight, 400); letter-spacing: var(--display-track, normal); }
+</style>
+
+<script>
+  const lab = document.querySelector<HTMLElement>('[data-typelab]')!;
+  const fonts = JSON.parse(lab.dataset.fonts!);
+  const fontSel = document.getElementById('typelab-font') as HTMLSelectElement;
+  const palSel = document.getElementById('typelab-palette') as HTMLSelectElement;
+  const root = document.documentElement;
+  const apply = () => {
+    const f = fonts.find((x: { id: string }) => x.id === fontSel.value) ?? fonts[0];
+    root.style.setProperty('--display', f.family);
+    root.style.setProperty('--display-weight', String(f.weight));
+    root.style.setProperty('--display-track', f.track);
+    root.dataset.palette = palSel.value;
+    try { localStorage.setItem('typelab2', JSON.stringify({ font: fontSel.value, palette: palSel.value })); } catch {}
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem('typelab2') || '{}');
+    if (saved.font) fontSel.value = saved.font;
+    if (saved.palette) palSel.value = saved.palette;
+  } catch {}
+  fontSel.addEventListener('change', apply);
+  palSel.addEventListener('change', apply);
+  apply();
+</script>

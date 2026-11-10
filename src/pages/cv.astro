@@ -1,0 +1,96 @@
+---
+// Public CV, generated from the site's data (research.ts, cv.ts) so it cannot drift.
+// `npm run cv:pdf` prints this page to public/christian-weilbach-cv.pdf.
+import Base from '../layouts/Base.astro';
+import { strands, talks } from '../data/research';
+import { position, education, awards, extraPublications, projects, commercial, community, languages, type Row } from '../data/cv';
+
+const pubRows: Row[] = [
+  ...strands.flatMap((s) => s.papers).map((p) => ({
+    years: String(p.year ?? ''),
+    text: `${p.authors}. ${p.title}. ${p.venue}${p.year ? ` ${p.year}` : ''}.${p.note ? ` ${p.note[0].toUpperCase()}${p.note.slice(1)}.` : ''}`,
+    url: p.url,
+  })),
+  ...extraPublications,
+].sort((a, b) => Number(b.years) - Number(a.years));
+
+const talkRows: Row[] = talks
+  .filter((t) => t.date)
+  .map((t) => ({ years: (t.date ?? '').replace(/^\D+/, ''), text: `${t.title}. ${t.where}.`, url: t.url }));
+
+const sections: [string, Row[]][] = [
+  ['Education', education],
+  ['Grants, honours and awards', awards],
+  ['Publications', pubRows],
+  ['Talks', talkRows],
+  ['Projects', projects],
+  ['Commercial work', commercial],
+  ['Teaching and community', community],
+];
+---
+<Base title="CV" description="Curriculum vitae of Christian Weilbach.">
+  <article class="cv section">
+    <header class="cv-head">
+      <h1>Christian Weilbach</h1>
+      <p class="role">{position}</p>
+      <p class="contact">
+        <span>christian@weilbach.name</span>
+        <a href="https://christian.weilbach.name">christian.weilbach.name</a>
+        <a href="https://github.com/whilo">github.com/whilo</a>
+        <a href="https://scholar.google.com/citations?user=6foQfZwAAAAJ&hl=en">Google Scholar</a>
+      </p>
+      <p class="download"><a href="/christian-weilbach-cv.pdf">Download as PDF</a></p>
+    </header>
+
+    {sections.map(([title, rows]) => (
+      <section>
+        <h2>{title}</h2>
+        <ol class="rows">
+          {rows.map((r) => (
+            <li>
+              <span class="years">{r.years}</span>
+              <span class="text">{r.url ? <a href={r.url}>{r.text}</a> : r.text}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+    ))}
+
+    <section>
+      <h2>Languages</h2>
+      <p>{languages}</p>
+    </section>
+  </article>
+</Base>
+
+<style>
+  .cv { max-width: 52rem; display: grid; gap: 30px; }
+  .cv-head { display: grid; gap: 6px; }
+  .role { font-size: 21px; }
+  .contact { display: flex; flex-wrap: wrap; gap: 4px 18px; font-family: var(--display); font-size: 14.5px; color: var(--muted); }
+  .download { font-family: var(--display); font-size: 14.5px; }
+  .cv h2 { font-size: 20px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); }
+  .rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .rows li { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 14px; break-inside: avoid; }
+  .years { font-family: var(--display); font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 3px; }
+  .text { font-size: 16.5px; line-height: 1.45; }
+  .text a { color: inherit; }
+  @media (max-width: 600px) { .rows li { grid-template-columns: 1fr; gap: 0; } }
+
+  @media print {
+    @page { size: A4; margin: 16mm 16mm 18mm; }
+    :global(html), :global(body) { background: #fff !important; }
+    :global(body) { font-size: 10.5pt; padding: 0; color: #111; }
+    :global(.masthead), :global(.footer), :global(.typelab), .download { display: none !important; }
+    .cv { max-width: none; gap: 14pt; padding: 0; }
+    .cv h1 { font-size: 24pt; }
+    .role { font-size: 12.5pt; }
+    .cv h2 { font-size: 12pt; margin-bottom: 5pt; padding-bottom: 3pt; break-after: avoid; }
+    .rows { gap: 3.5pt; }
+    .rows li { grid-template-columns: 5.2rem minmax(0, 1fr); gap: 10pt; }
+    .years { font-size: 8.5pt; padding-top: 1.5pt; }
+    .text { font-size: 9.5pt; line-height: 1.38; }
+    .contact { font-size: 9pt; }
+    a { text-decoration: none; }
+  }
+</style>

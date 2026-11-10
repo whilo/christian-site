@@ -1,0 +1,28 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('writing', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const fmt = (d: Date) => d.toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
+---
+<Base title="Writing" current="writing" description="Essays and notes by Christian Weilbach.">
+  <div class="spread section">
+    <div class="main">
+      <h1>Writing</h1>
+      <p class="lede">Essays make one argument at length. Notes record a single result or observation.</p>
+      {posts.length === 0 ? (
+        <p class="muted">The first essay is in preparation. Subscribe to the <a href="/rss.xml">feed</a> to get it when it is out.</p>
+      ) : (
+        <ul class="entries">
+          {posts.map((p) => (
+            <li>
+              <a class="title" href={`/writing/${p.id}/`}>{p.data.title}</a>
+              <span class="meta">{p.data.kind === 'note' ? 'Note' : 'Essay'}, {fmt(p.data.date)}. {p.data.description}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  </div>
+</Base>

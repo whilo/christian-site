@@ -1,0 +1,31 @@
+---
+// A note in the right margin, next to the line that cites it. On narrow screens the
+// numbered marker toggles the note open inline. Usage in MDX:
+//   ...a claim<Sidenote>Source or aside.</Sidenote> continues.
+const id = `sn-${Math.random().toString(36).slice(2, 8)}`;
+---
+<label for={id} class="sn-mark" aria-label="Show note"></label><input type="checkbox" id={id} class="sn-toggle" /><span class="sidenote"><slot /></span>
+
+<style is:global>
+  .prose { counter-reset: sidenote; }
+  .sn-mark { counter-increment: sidenote; cursor: pointer; }
+  .sn-mark::after {
+    content: counter(sidenote); font-size: 0.68em; vertical-align: super; line-height: 0;
+    color: var(--predict); padding-left: 1px;
+  }
+  .sidenote { font-size: 15.5px; line-height: 1.45; color: var(--muted); }
+  .sidenote::before { content: counter(sidenote) " "; color: var(--predict); font-size: 0.85em; }
+  .sn-toggle { display: none; }
+  @media (min-width: 981px) {
+    .sidenote {
+      float: right; clear: right; width: var(--margin);
+      margin-right: calc(-1 * (var(--margin) + 4rem)); margin-top: 0.2em; margin-bottom: 0.6em;
+    }
+  }
+  @media (max-width: 980px) {
+    .sidenote { display: none; }
+    .sn-toggle:checked + .sidenote {
+      display: block; margin: 10px 0; padding-left: 12px; border-left: 2px solid var(--rule);
+    }
+  }
+</style>

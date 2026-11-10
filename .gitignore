@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.astro/
+.cpcache/
+.shadow-cljs/
+.nrepl-port
+target/
+
+# Private working notes, never published or pushed (the repository is public)
+notes/
+WRITING.md
+
+# Research code kept local until the first essay is published
+cljs/
+deps.edn
+
+# Draft essays stay local until published
+src/content/writing/who-checks-a-system-that-improves-itself.mdx

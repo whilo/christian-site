@@ -1,0 +1,94 @@
+---
+// About: the biography as an arc, in Christian's own voice.
+// DRAFT SKELETON. Facts come from the old site, the Votorola process guide (2020),
+// datahike.io and the thesis bibliography. Christian's own additions go here
+// to write; they are highlighted in development and must be gone before publishing.
+import Base from '../layouts/Base.astro';
+import { thesis } from '../data/research';
+---
+<Base title="About" current="about" reading description="Christian Weilbach: from philosophy and liquid democracy to machine learning and systems that improve themselves.">
+  <div class="spread section">
+    <div class="main about">
+      <h1>About</h1>
+
+      <p class="lede">
+        I keep asking how things learn, from cells and societies to machines, and I keep getting better tools for the
+        question. Philosophy, neural networks, probabilistic programs and simulations each let me reason about a little
+        more of it. The structure of the process stays the same across all of them, and that structure is what I study.
+      </p>
+
+      <h2>Where the questions come from</h2>
+      <p>
+        I came to machine learning from philosophy. I have always cared about constructivism, the view that a learner builds its picture of the world through its
+        own activity. Hegel taught me to see history as a learning process
+        that grows by reflecting on itself. Bogdanov's tektology, Stafford Beer's cybernetics and Heinz von Foerster's
+        work describe organisations and observers as learners of this kind. Critical theory, from Horkheimer and Adorno
+        to Žižek, gave me a way to test these ideas, because it asks whose ends a rational system serves.
+      </p>
+      <p>
+        I do not think the tension between instrumental, bounded rationality and reflection on purpose can be resolved
+        once. It returns wherever intelligent organisations emerge, at human level or beyond. Building such systems
+        includes building the places where that tension can be resolved into a new unified level of abstraction.
+      </p>
+      <p>
+        I do not privilege cooperation or competition. Which of the two serves the people involved depends on the
+        situation, and it is often unclear in advance. Better programming models for simulation help people examine and explore
+        such situations before they commit.
+      </p>
+
+      <h2>From philosophy to programming</h2>
+      <p>
+        After a year of mathematics and computer science, I studied philosophy and cultural anthropology at Heidelberg
+        University from 2006 to 2011.
+        What turned me into a programmer was <a href="http://reluk.ca/project/Votorola/home-2013.html">Votorola</a>,
+        liquid democracy software designed by my friend Michael Allan with Occupy and other liquid democracy groups
+        between 2007 and 2014. It made me want to work on a form of automation that is amenable to collective
+        governance and transparent self-optimisation, and I still work on that.
+      </p>
+      <p>
+        Votorola needed a data model that could be distributed across many participants. That led me to Clojure
+        and persistent data structures, to <a href="https://github.com/replikativ">replikativ</a> in 2013, to a
+        <a href="https://arxiv.org/abs/1508.05545">paper on conflict resolution in open replication</a> with Konrad Kühne
+        and Annette Bieniusa, and eventually to <a href="https://datahike.io">Datahike</a>.
+      </p>
+
+      <h2>Learning machines</h2>
+      <p>
+        In the meantime I also returned to computer science at Heidelberg. My Bachelor's thesis was on online learning for Boltzmann
+        machines on spiking neuron models, which I extended as a research assistant in the Human Brain Project. My
+        Master's thesis was on dictionary learning with Bayesian GANs for few-shot classification.
+        I co-organised the Clojure meetup in Mannheim-Heidelberg and the Machine Learning Meetup Rhein-Neckar, and in 2018
+        founded LambdaForge to develop Datahike and support it in production.
+      </p>
+      <p>
+        For my PhD I moved to Vancouver and the <a href={thesis.group.url}>PLAI group</a> of
+        <a href={thesis.advisor.url}>Frank Wood</a> at the University of British Columbia, where I worked on projecting the
+        structure of a problem into the neural network architectures that solve it.
+      </p>
+
+      <h2>History, language and how communities remember</h2>
+      <p>
+        With my partner and historian <a href="https://gisellegonzalezgarcia.github.io/portfolio/">Dr. Giselle González García</a> I have worked on what language models can do for
+        <a href="https://arxiv.org/abs/2310.10808">research in history</a>, and built two open databases of migration on
+        this stack, the <a href="https://gisellegonzalezgarcia.github.io/ciid/">Cuba–Ireland Immigration Database</a> and
+        <a href="https://gisellegonzalezgarcia.github.io/redes_islenas/">Redes Isleñas</a>, on Canarian emigration to the
+        Americas.
+      </p>
+
+      <h2>Now</h2>
+      <p>
+        I am the CEO of <a href="https://simm.is">Simmis</a>, where we build software for organisations of people and AI
+        agents. The research on this site continues there and in the open-source projects underneath it.
+      </p>
+    </div>
+    <aside class="aside">
+      <img class="portrait" src="/christian_squamish.png" alt="Christian Weilbach outdoors in Squamish, British Columbia" width="160" height="160" />
+    </aside>
+  </div>
+</Base>
+
+<style>
+  .about h2 { margin-top: 26px; }
+  .portrait { width: 160px; height: 160px; object-fit: cover; border-radius: 50%; }
+  @media (max-width: 980px) { .portrait { width: 88px; height: 88px; } }
+</style>

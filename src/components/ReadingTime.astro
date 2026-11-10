@@ -1,0 +1,86 @@
+---
+// An estimate of the remaining reading time that learns the reader's pace.
+//
+// Model. Reading speed v (words per minute) has a log-normal prior with median 240 and a wide
+// spread (about 100 to 580 at 95%). Before the reader scrolls there is no evidence about v,
+// so the page shows the prior and counts down a 30-second warm-up. Once the reader has scrolled,
+// the observation is words above the reading line divided by active time; its noise
+// shrinks with the number of words read. Prior and observation combine in log space, and the
+// line shows the 10% to 90% interval of remaining words / v. At the end the page compares its
+// first evidence-based estimate of the total with the time actually taken.
+// Nothing is stored or sent anywhere.
+---
+<p class="reading-time" data-reading-time aria-live="off" hidden></p>
+
+<style>
+  .reading-time {
+    position: fixed; left: max(14px, env(safe-area-inset-left, 0px)); bottom: 12px; z-index: 30; margin: 0;
+    padding: 5px 9px; max-width: min(22rem, calc(100vw - 28px));
+    font-family: var(--display); font-size: 12.5px; line-height: 1.4; color: var(--muted);
+    background: color-mix(in srgb, var(--paper) 92%, transparent); border: 1px solid var(--rule);
+    font-variant-numeric: tabular-nums;
+  }
+  @media print { .reading-time { display: none; } }
+</style>
+
+<script>
+  const el = document.querySelector('[data-reading-time]');
+  const main = document.querySelector('main');
+  if (el && main) {
+    // Words of running text and where each block sits on the page.
+    const blocks = [...main.querySelectorAll('p, li, figcaption, h2, h3, blockquote')]
+      .filter((b) => !b.closest('[data-reading-time], .typelab, [hidden]') && !b.querySelector('p, li'))
+      .map((b) => ({ b, words: (b.textContent || '').trim().split(/\s+/).filter(Boolean).length }));
+    const total = blocks.reduce((a, x) => a + x.words, 0);
+    const wordsAbove = (y) => blocks.reduce((a, { b, words }) => {
+      const r = b.getBoundingClientRect(), top = r.top + scrollY, h = Math.max(1, r.height);
+      return a + words * Math.max(0, Math.min(1, (y - top) / h));
+    }, 0);
+
+    if (total >= 300) {
+      const MU0 = Math.log(240), S0 = 0.45, WARMUP = 30;
+      let active = 0, lastTick = performance.now(), lastAct = lastTick, scrolled = false, first = null, done = false;
+      const act = () => { lastAct = performance.now(); };
+      addEventListener('scroll', () => { act(); if (scrollY > innerHeight * 0.3) scrolled = true; }, { passive: true });
+      for (const e of ['pointermove', 'keydown', 'touchstart']) addEventListener(e, act, { passive: true });
+
+      const mins = (m) => m < 1 ? 'under a minute' : `${Math.round(m)} min`;
+      const range = (lo, hi) => hi < 1 ? 'under a minute' : Math.round(lo) === Math.round(hi) ? `about ${mins(hi)}` : `${Math.max(1, Math.round(lo))} to ${Math.round(hi)} min`;
+      const clock = (m) => `${Math.floor(m)} min ${String(Math.round((m % 1) * 60)).padStart(2, '0')} s`;
+
+      const tick = () => {
+        const now = performance.now();
+        // time counts as reading while the tab is visible and the reader did something in the last 20 s
+        if (!document.hidden && now - lastAct < 20000) active += now - lastTick;
+        lastTick = now;
+        if (done) return;
+        // The reading line moves from the top of the window to its bottom as the page scrolls from start to end.
+        const maxScroll = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+        const T = active / 60000, read = wordsAbove(scrollY + innerHeight * Math.min(1, scrollY / maxScroll)), left = Math.max(0, total - read);
+        let mu = MU0, sd = S0, own = false;
+        if (scrolled && read > 60 && active / 1000 >= WARMUP) {
+          const obs = Math.max(Math.log(50), Math.min(Math.log(1500), Math.log(read / T)));
+          const v = 0.25 * (100 / read) + 0.02, p0 = 1 / (S0 * S0), p1 = 1 / v;
+          mu = (p0 * MU0 + p1 * obs) / (p0 + p1); sd = Math.sqrt(1 / (p0 + p1)); own = true;
+        }
+        const lo = left / Math.exp(mu + 1.28 * sd), hi = left / Math.exp(mu - 1.28 * sd);
+        if (own && !first && active / 1000 >= WARMUP) first = { lo: T + lo, hi: T + hi };
+
+        if (left / total < 0.03 && scrolled) {
+          done = true;
+          el.textContent = first
+            ? `You reached the end in ${clock(T)}. My first estimate from your own pace was ${range(first.lo, first.hi)} in total.`
+            : `You reached the end in ${clock(T)}, before I had an estimate from your own pace.`;
+        } else if (own) {
+          el.textContent = `${range(lo, hi)} left at your pace.`;
+        } else {
+          const wait = Math.max(0, Math.ceil(WARMUP - active / 1000));
+          el.textContent = `Typical readers need ${range(lo, hi)} for this page. ` +
+            (wait > 0 ? `I will estimate your own pace in ${wait} s, once you have scrolled.` : `I will estimate your own pace once you have scrolled.`);
+        }
+        el.hidden = false;
+      };
+      tick(); setInterval(tick, 1000);
+    }
+  }
+</script>

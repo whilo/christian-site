@@ -1,0 +1,38 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection, render } from 'astro:content';
+import 'katex/dist/katex.min.css';
+
+export async function getStaticPaths() {
+  // Drafts are built only in development, so they are not reachable on the public site.
+  const posts = await getCollection('writing', ({ data }) => !data.draft || import.meta.env.DEV);
+  return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
+}
+const { post } = Astro.props;
+const { Content } = await render(post);
+const fmt = (d: Date) => d.toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
+---
+<Base title={post.data.title} description={post.data.description} current="writing" code reading>
+  <article class="spread section">
+    <div class="main">
+      <header>
+        {post.data.draft && <p class="muted small">Draft. Not listed; please do not share further.</p>}
+        <h1>{post.data.title}</h1>
+        <p class="muted">{fmt(post.data.date)}</p>
+      </header>
+      <div class="prose"><Content /></div>
+    </div>
+  </article>
+</Base>
+
+<style>
+  /* Block flow (not grid) so sidenotes can float into the margin beside their line. */
+  .prose { display: block; margin-top: 12px; }
+  .prose > :global(* + *) { margin-top: 18px; }
+  .prose :global(h2) { margin-top: 40px; }
+  .prose :global(blockquote) { margin-left: 0; padding-left: 18px; border-left: 2px solid var(--evidence); color: var(--muted); }
+  .prose :global(ul), .prose :global(ol) { padding-left: 1.3em; }
+  .prose :global(li + li) { margin-top: 6px; }
+  .prose :global(.katex-display) { overflow-x: auto; overflow-y: hidden; padding-block: 4px; }
+  .prose :global(.katex) { font-size: 1.05em; }
+</style>

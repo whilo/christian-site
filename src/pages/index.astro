@@ -1,0 +1,162 @@
+---
+import Base from '../layouts/Base.astro';
+import Levels from '../components/Levels.astro';
+import Genealogy from '../components/Genealogy.astro';
+import Garden from '../components/Garden.astro';
+import { strands, talks, thesis } from '../data/research';
+import { getCollection } from 'astro:content';
+
+const selected = strands.flatMap((s) => s.papers.filter((p) => p.selected));
+const posts = (await getCollection('writing', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 5);
+---
+<Base current="home">
+  <div class="spread section hero">
+    <div class="main">
+      <h1>Christian Weilbach</h1>
+      <p class="lede">
+        I study how learning systems can improve themselves and stay correct. I am most interested in the
+        organisations around them, since the structures that check a learner have to learn and grow together with it.
+      </p>
+      <p>
+        I did my PhD in machine learning at the <a href={thesis.url}>University of British Columbia</a> with
+        <a href={thesis.advisor.url}>Frank Wood</a>, on how the structure of a problem can be translated into the
+        neural networks that solve it. Before that I wrote my Bachelor's and Master's theses at Heidelberg University, on online
+        learning in spiking neuron models and on dictionary learning with Bayesian GANs, and studied philosophy and
+        cultural anthropology. I am now the CEO of <a href="https://simm.is">Simmis</a>, where we build software for
+        organisations of people and AI agents. The open-source stack underneath it covers versioned memory, forkable
+        runtimes, probabilistic inference and a language whose kernel checks its own optimisations.
+        <a href="/about">More about me</a>.
+      </p>
+    </div>
+    <aside class="aside" id="contact">
+      <img class="portrait" src="/christian_squamish.png" alt="Christian Weilbach outdoors in Squamish, British Columbia" width="160" height="160" />
+      <div class="contact">
+        <span>christian@weilbach.name</span>
+        <a href="https://github.com/whilo">GitHub</a>
+        <a href="https://scholar.google.com/citations?user=6foQfZwAAAAJ&hl=en">Google Scholar</a>
+        <a href="https://www.linkedin.com/in/christian-weilbach-1bab251b0/">LinkedIn</a>
+        <a href="/cv">CV</a>
+        <a href="https://cal.com/christian-weilbach-k3cf0p/30min">Book a 30-minute call</a>
+      </div>
+      <Garden />
+    </aside>
+  </div>
+
+  <section class="section grown">
+    <div class="spread">
+      <div class="main">
+        <h2>Projects and papers since 2006</h2>
+        <p>The figure shows what I have worked on and which project grew out of which. Some branches ended, and a few came back years later. Scroll to replay the years.</p>
+      </div>
+    </div>
+    <Genealogy />
+  </section>
+
+  <div class="spread section">
+    <div class="main">
+      <h2>How the projects relate</h2>
+      <p>
+        My projects form a stack, every level supports the same operation. A person, an agent or a program
+        makes an attempt on a fork and compares the result with evidence. The attempt is adopted only after a check.
+        All levels share one versioned memory, so forking is cheap.
+      </p>
+      <Levels />
+    </div>
+    <aside class="aside margin-note">
+      <p>A system can run this loop well and still pursue the wrong goal. So each level also carries a question about its purpose, which appears when you open the level.</p>
+    </aside>
+  </div>
+
+  <div class="spread section">
+    <div class="main">
+      <h2>Current work</h2>
+      <ul class="entries">
+        <li>
+          <a class="title" href="https://github.com/replikativ/klara">Klara</a>
+          <span class="meta">A language in which a running program keeps earlier versions of itself and tries optimisations on a fork. A small kernel checks each optimisation before the program adopts it. Research prototype.</span>
+        </li>
+        <li>
+          <a class="title" href="https://github.com/replikativ/foerster">Foerster</a>
+          <span class="meta">Probabilistic inference that forks a running simulation instead of re-running it. A <a href="https://simm.is/blog/stuttgart-in-a-posterior">simulation of Stuttgart</a> with 936,597 people is built on it. Beta.</span>
+        </li>
+        <li>
+          <a class="title" href="https://datahike.io">Datahike</a>
+          <span class="meta">A Datalog database that keeps every past state queryable. A branch shares all unchanged storage. Stratum, Proximum and Scriptum apply the same model to columnar SQL, vector search and full text. Datahike is used in production and close to 1.0.</span>
+        </li>
+        <li>
+          <a class="title" href="https://github.com/replikativ/raster">Raster</a>
+          <span class="meta">Numerical computing for the JVM that compiles the same code for different devices. It runs the Stuttgart simulation, and a LeNet-5 training step on CPU ran 1.7 to 2.4 times faster than JAX in our measurements. Beta on the JVM, alpha on GPUs.</span>
+        </li>
+        <li>
+          <a class="title" href="https://simm.is">Simmis</a>
+          <span class="meta">A workspace in which people and AI agents share one memory. Work happens on branches and joins the shared state after review. Early access.</span>
+        </li>
+      </ul>
+      <p>
+        I am looking for people who want to work on self-improving systems, in programming languages, probabilistic
+        inference or systems engineering. If that is you, write to me at christian@weilbach.name or
+        <a href="https://cal.com/christian-weilbach-k3cf0p/30min">book a 30-minute call</a>.
+      </p>
+    </div>
+  </div>
+
+  {posts.length > 0 && (
+    <div class="spread section">
+      <div class="main">
+        <h2>Writing</h2>
+        <ul class="entries">
+          {posts.map((p) => (
+            <li><a class="title" href={`/writing/${p.id}/`}>{p.data.title}</a><span class="meta">{p.data.description}</span></li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )}
+
+  <div class="spread section">
+    <div class="main">
+      <h2>Selected papers</h2>
+      <ul class="entries">
+        {selected.map((p) => (
+          <li>
+            {p.url ? <a class="title" href={p.url}>{p.title}</a> : <span class="title">{p.title}</span>}
+            <span class="meta">{p.authors}. <span class="venue">{p.venue}</span>{p.year && `, ${p.year}`}.{p.note && <span class="note"> {p.note[0].toUpperCase() + p.note.slice(1)}.</span>}</span>
+          </li>
+        ))}
+      </ul>
+      <p class="small"><a href="/research">All research, with figures and code</a></p>
+    </div>
+  </div>
+
+  <div class="spread section">
+    <div class="main">
+      <h2>Talks</h2>
+      <ul class="entries">
+        {talks.map((t) => (
+          <li>
+            {t.url ? <a class="title" href={t.url}>{t.title}</a> : <span>{t.title}</span>}
+            <span class="meta">{t.where}{t.date && `, ${t.date}`}.</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .hero { padding-top: clamp(40px, 9vh, 96px); }
+  .hero .main { gap: 26px; }
+  .grown .main { gap: 14px; }
+  .margin-note { padding-top: 84px; font-size: 16px; line-height: 1.5; }
+  @media (max-width: 980px) { .margin-note { order: 2; padding-top: 0; } }
+  .portrait { width: 160px; height: 160px; object-fit: cover; border-radius: 50%; }
+  .contact { display: grid; gap: 4px; }
+  .contact span { color: var(--ink); user-select: all; }
+  @media (max-width: 980px) {
+    .hero .aside { display: flex; align-items: center; gap: 18px; }
+    .portrait { width: 88px; height: 88px; }
+    .contact { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  }
+</style>
