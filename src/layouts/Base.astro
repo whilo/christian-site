@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import DevTypeLab from '../components/DevTypeLab.astro';
 import ReadingTime from '../components/ReadingTime.astro';
+import PointerForecast from '../components/PointerForecast.astro';
 
 interface Props {
   title?: string;
@@ -12,7 +13,7 @@ interface Props {
 }
 const {
   title,
-  description = 'Christian Weilbach works on learning systems that simulate, check and adopt changes to themselves, from inference and compilers to organisations of people and agents.',
+  description = 'Christian Weilbach (PhD in machine learning, UBC) works on learning systems that simulate, check and adopt changes to themselves. Founder and CEO of Simmis.',
   current,
   code = false,
   reading = false,
@@ -65,12 +66,13 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
           <a href="/writing" aria-current={current === 'writing' ? 'page' : undefined}>Writing</a>
           <a href="/about" aria-current={current === 'about' ? 'page' : undefined}>About</a>
           <a href="/#contact">Contact</a>
+          <PointerForecast />
         </nav>
       </header>
       <main>
         <slot />
       </main>
-      <footer class="footer">
+      <footer class:list={["footer", reading && "footer-reading"]}>
         <span>Christian Weilbach</span>
         <a href="https://github.com/whilo">GitHub</a>
         <a href="https://scholar.google.com/citations?user=6foQfZwAAAAJ&hl=en">Google Scholar</a>

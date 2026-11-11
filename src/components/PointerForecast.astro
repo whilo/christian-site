@@ -1,0 +1,345 @@
+---
+// The page forecasts the reader's pointer and draws the forecast as forking paths, in the
+// colours the essays use: blue for predictions, ink for what happened, ochre for observations,
+// vermilion for surprises.
+//
+// Four hypotheses about the motion (still, straight, turning, slowing down) are tracked by
+// Kalman filters (src/scripts/pointer-imm.ts) and weighted by how well each predicted the last
+// moment. Each moving hypothesis is drawn as a branch ahead of the pointer that forks twice,
+// spread by its own uncertainty about the direction; a branch is drawn as strongly as it is
+// believed and fades out where the predicted spread grows, and with distance from the pointer.
+// Links within reach of the forecast take on its blue, as strongly as the forecast reaches them.
+//
+// Behind the pointer, its actual path stays on the page as a faint ink trace that fades very
+// slowly, over about twenty seconds. Every 0.2 s the page commits to a forecast; when its time comes, an ochre dot
+// on the trace marks where the pointer actually is, and a vermilion ring marks a forecast that
+// missed by more than its own uncertainty. Everything eases in and out; nothing flashes.
+// Each frame is drawn where the pointer is believed to be as the frame is shown (the last
+// sample carried forward by the forecast), so frames without a new sample still move.
+//
+// Only with a fine pointer that can hover. Off with reduced motion unless switched on; the
+// switch in the header is remembered in localStorage.
+---
+<button class="forecast-toggle" type="button" role="switch" aria-checked="true" data-forecast-toggle hidden
+  title="This page forecasts where your pointer goes next. Blue forks are its predictions, ochre dots where you went, red rings its surprises.">
+  <span>Forecast</span><span class="track" aria-hidden="true"><span class="knob"></span></span>
+</button>
+
+<style>
+  .forecast-toggle {
+    display: inline-flex; align-items: center; gap: 7px; margin-left: 10px;
+    font: inherit; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer;
+  }
+  .forecast-toggle[hidden] { display: none; }
+  .forecast-toggle:hover { color: var(--ink); }
+  .track {
+    position: relative; width: 24px; height: 13px; border-radius: 7px;
+    border: 1px solid color-mix(in srgb, var(--muted) 70%, transparent); transition: border-color 200ms;
+  }
+  .knob {
+    position: absolute; top: 2px; left: 2px; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--muted); transition: transform 200ms ease, background-color 200ms;
+  }
+  .forecast-toggle[aria-checked="true"] .track { border-color: var(--predict); }
+  .forecast-toggle[aria-checked="true"] .knob { transform: translateX(11px); background: var(--predict); }
+  @media (prefers-reduced-motion: reduce) { .track, .knob { transition: none; } }
+  :global(.forecast-canvas) { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 60; }
+  /* a link within reach of the forecast, tinted by --fc from 0 to 1 */
+  :global(a.fc:not(:hover)) {
+    color: color-mix(in srgb, var(--predict) calc(var(--fc) * 80%), currentColor);
+    text-decoration-color: color-mix(in srgb, var(--predict) calc(var(--fc) * 100%), color-mix(in srgb, var(--ink) 28%, transparent));
+  }
+  @media (hover: none), (pointer: coarse) { .forecast-toggle { display: none; } }
+</style>
+
+<script>
+  import { PointerIMM, fillF, N } from '../scripts/pointer-imm';
+
+  const toggle = document.querySelector<HTMLButtonElement>('[data-forecast-toggle]');
+  const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+  if (toggle && fine) {
+    const KEY = 'pointer-forecast';
+    const stored = (() => { try { return localStorage.getItem(KEY); } catch { return null; } })();
+    let on = stored ? stored === 'on' : !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const label = () => { toggle.setAttribute('aria-checked', String(on)); };
+    toggle.hidden = false; label();
+
+    // The canvas on the page, and an offscreen layer holding the older part of the trace, which
+    // changes slowly and is redrawn only a few times per second.
+    const cv = document.createElement('canvas');
+    cv.className = 'forecast-canvas'; cv.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(cv);
+    const ctx = cv.getContext('2d')!;
+    const layer = document.createElement('canvas'), lctx = layer.getContext('2d')!;
+    let W = 0, H = 0, layerAt = -Infinity;
+    const fit = () => {
+      const d = Math.min(2, devicePixelRatio || 1);
+      W = innerWidth; H = innerHeight;
+      for (const [c, x] of [[cv, ctx], [layer, lctx]] as const) { c.width = W * d; c.height = H * d; x.setTransform(d, 0, 0, d, 0, 0); }
+      layerAt = -Infinity;
+    };
+    fit(); addEventListener('resize', fit);
+    let col = { predict: '', evidence: '', surprise: '', ink: '' };
+    const colours = () => {
+      const s = getComputedStyle(document.documentElement);
+      col = { predict: s.getPropertyValue('--predict').trim(), evidence: s.getPropertyValue('--evidence').trim(),
+              surprise: s.getPropertyValue('--surprise').trim(), ink: s.getPropertyValue('--ink').trim() };
+      layerAt = -Infinity;
+    };
+    colours(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change', colours);
+
+    // ---- timing: how fast things appear and disappear (ms) ----
+    const HORIZON = 0.6, STEPS = 18, FORKS = [5, 11], COMMIT_EVERY = 200;
+    const RISE = 160, FALL = 1400;         // the forecast eases in quickly and out slowly
+    const HUE_RISE = 160, HUE_FALL = 1200; // links take on and lose the forecast's blue
+    const TRAIL_MS = 20000, OBS_MS = 12000, SURPRISE_MS = 2400, LAYER_MS = 150;
+
+    // ---- state; fixed buffers, so that frames and mouse samples allocate (almost) nothing ----
+    const imm = new PointerIMM();
+    let hasPtr = false, ptrX = 0, ptrY = 0, lastT = 0, lastMove = 0, rawSpeed = 0, lastZX = 0, lastZY = 0;
+    let lastFrame = 0, lastCommit = 0, shown = 0;
+    const shownW = new Float64Array(N);
+    // what is drawn: the pointer where it is believed to be as the frame is shown, and each
+    // hypothesis's velocity, smoothed so the forks do not twitch from sample to sample
+    let hasO = false, oX = 0, oY = 0;
+    const drawV = new Float64Array(2 * N);
+    // the trace: a ring of points in page coordinates, so it scrolls with the page
+    const CAP = 1 << 15, TX = new Float64Array(CAP), TY = new Float64Array(CAP), TT = new Float64Array(CAP);
+    let tHead = 0, tTail = 0, layerEnd = 0, layerSX = 0, layerSY = 0;
+    // the forecast drawn in this frame: points with their strength, and the tips
+    const LIT = new Float64Array(3 * 1024), TIPS = new Float64Array(2 * 64);
+    let litN = 0, tipN = 0;
+    const knots = new Float64Array(5), fade = new Float64Array(STEPS + 1), BF = new Float64Array(16);
+    let commits: { due: number; tips: Float64Array; sigma: number }[] = [];
+    let marks: { t: number; x: number; y: number; surprise: boolean }[] = [];
+    const hue = new Map<HTMLAnchorElement, { v: number; written: number }>();
+
+    const untint = (a: HTMLAnchorElement) => { hue.delete(a); a.classList.remove('fc'); a.style.removeProperty('--fc'); };
+    toggle.addEventListener('click', () => {
+      on = !on; label();
+      try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch { /* storage blocked */ }
+      if (on) return;
+      tHead = tTail = layerEnd = 0; marks = []; commits = []; shown = 0; hasO = false; layerAt = -Infinity;
+      for (const a of [...hue.keys()]) untint(a);
+      ctx.clearRect(0, 0, W, H);
+    });
+
+    // visible links and their boxes, measured again after scrolling or resizing
+    const links = [...document.querySelectorAll<HTMLAnchorElement>('a[href]')];
+    let boxes: { a: HTMLAnchorElement; rs: DOMRect[] }[] = [], dirty = true;
+    const measure = () => {
+      dirty = false; boxes = [];
+      for (const a of links) {
+        const rs = [...a.getClientRects()].filter((r) => r.width > 0 && r.bottom > -40 && r.top < innerHeight + 40);
+        if (rs.length) boxes.push({ a, rs });
+      }
+    };
+    addEventListener('scroll', () => { dirty = true; if (tHead > tTail || marks.length) kick(); }, { passive: true });
+    addEventListener('resize', () => { dirty = true; });
+
+    const sample = (x: number, y: number, ts: number, now: number) => {
+      const dt = Math.min(0.15, Math.max(0.001, (ts - (lastT || ts - 16)) / 1000));
+      lastT = ts;
+      imm.step(x, y, dt);
+      if (hasPtr) rawSpeed += (1 - Math.exp(-dt / 0.05)) * (Math.hypot(x - lastZX, y - lastZY) / dt - rawSpeed);
+      lastZX = x; lastZY = y; hasPtr = true;
+      const px = x + scrollX, py = y + scrollY, j = (tHead - 1) & (CAP - 1);
+      if (tHead === tTail || Math.hypot(px - TX[j], py - TY[j]) > 3) {
+        const k = tHead & (CAP - 1); TX[k] = px; TY[k] = py; TT[k] = now; tHead++;
+        if (tHead - tTail > CAP) tTail = tHead - CAP;
+      }
+    };
+    addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse' || !on) return;
+      const now = performance.now();
+      const all = e.getCoalescedEvents?.();
+      if (all && all.length) for (const c of all) sample(c.clientX, c.clientY, c.timeStamp, now);
+      else sample(e.clientX, e.clientY, e.timeStamp, now);
+      ptrX = e.clientX; ptrY = e.clientY; lastMove = now;
+      kick();
+    }, { passive: true });
+    document.documentElement.addEventListener('pointerleave', () => { rawSpeed = 0; });
+
+    // Frames run at full rate while anything moves; while only the trace fades, a few per second.
+    let timer = 0, pending = false;
+    const kick = () => {
+      if (!on) return;
+      if (timer) { clearTimeout(timer); timer = 0; }
+      if (!pending) { pending = true; if (!lastFrame) lastFrame = performance.now(); requestAnimationFrame(frame); }
+    };
+    const smooth = (a: number, b: number, v: number) => { const x = Math.max(0, Math.min(1, (v - a) / (b - a))); return x * x * (3 - 2 * x); };
+    const ease = (cur: number, target: number, dt: number, rise: number, fall: number) =>
+      cur + (target - cur) * (1 - Math.exp(-dt / (target > cur ? rise : fall)));
+
+    // ---- the trace ----
+    const BANDS = 10, bandAlpha = (k: number) => 0.3 * ((k + 0.5) / BANDS) ** 1.3;
+    const renderLayer = (t: number, sx: number, sy: number) => {
+      lctx.clearRect(0, 0, W, H);
+      lctx.strokeStyle = col.ink; lctx.lineWidth = 1.25; lctx.lineCap = 'round'; lctx.lineJoin = 'round';
+      // points are in time order, so each band of strength is one stretch: a single pass
+      let band = -1;
+      for (let i = tTail + 1; i < tHead; i++) {
+        const k = i & (CAP - 1), h = (i - 1) & (CAP - 1);
+        const b = Math.max(0, Math.min(BANDS - 1, Math.floor((1 - (t - TT[k]) / TRAIL_MS) * BANDS)));
+        if (b !== band) {
+          if (band >= 0) { lctx.globalAlpha = bandAlpha(band); lctx.stroke(); }
+          band = b; lctx.beginPath();
+        }
+        lctx.moveTo(TX[h] - sx, TY[h] - sy); lctx.lineTo(TX[k] - sx, TY[k] - sy);
+      }
+      if (band >= 0) { lctx.globalAlpha = bandAlpha(band); lctx.stroke(); }
+      layerAt = t; layerSX = sx; layerSY = sy; layerEnd = tHead;
+    };
+
+    // ---- the forecast: one hypothesis drawn as a branching path, from plain numbers ----
+    let bW = 0, bStrength = 0;
+    const grow = (px: number, py: number, vx: number, vy: number, k: number, share: number, depth: number, spread: number) => {
+      while (k < STEPS) {
+        if (FORKS[depth] === k) {
+          const a = spread * (depth === 0 ? 0.5 : 0.35), c = Math.cos(a), n = Math.sin(a);
+          grow(px, py, c * vx + n * vy, -n * vx + c * vy, k, share / 2, depth + 1, spread);
+          grow(px, py, c * vx - n * vy, n * vx + c * vy, k, share / 2, depth + 1, spread);
+          return;
+        }
+        const F = BF;
+        const qx = F[0] * px + F[1] * py + F[2] * vx + F[3] * vy, qy = F[4] * px + F[5] * py + F[6] * vx + F[7] * vy;
+        const qvx = F[8] * px + F[9] * py + F[10] * vx + F[11] * vy, qvy = F[12] * px + F[13] * py + F[14] * vx + F[15] * vy;
+        const near = 1 - smooth(110, 360, Math.hypot(qx - oX, qy - oY));
+        const alpha = bStrength * fade[k + 1] * near * (0.2 + 0.8 * bW) * (0.55 + 0.45 * share);
+        if (alpha > 0.01) {
+          ctx.globalAlpha = alpha; ctx.lineWidth = 0.6 + 2.2 * bW * Math.sqrt(share);
+          ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(qx, qy); ctx.stroke();
+          if (litN < 1024) { LIT[3 * litN] = qx; LIT[3 * litN + 1] = qy; LIT[3 * litN + 2] = alpha; litN++; }
+        }
+        px = qx; py = qy; vx = qvx; vy = qvy; k++;
+      }
+      const near = 1 - smooth(110, 360, Math.hypot(px - oX, py - oY));
+      const alpha = bStrength * fade[STEPS] * near * (0.2 + 0.8 * bW);
+      if (alpha > 0.01) { ctx.globalAlpha = alpha; ctx.beginPath(); ctx.arc(px, py, 1.2 + 1.6 * bW, 0, 7); ctx.fill(); }
+      if (tipN < 64) { TIPS[2 * tipN] = px; TIPS[2 * tipN + 1] = py; tipN++; }
+    };
+    const branch = (i: number) => {
+      const vx = drawV[2 * i], vy = drawV[2 * i + 1], v = Math.hypot(vx, vy) || 1;
+      // the spread of the direction: this filter's own velocity uncertainty relative to the speed
+      const P = imm.P[i], sv = Math.sqrt((P[10] + P[15]) / 2);
+      const spread = Math.max(0.05, Math.min(0.55, (sv + 120) / v));
+      fillF(i, HORIZON / STEPS, imm.omega, BF); // the same step for the whole branch
+      bW = shownW[i];
+      grow(oX, oY, vx, vy, 0, 1, 0, spread);
+    };
+
+    const frame = (t: number) => {
+      pending = false;
+      const dt = Math.max(1, Math.min(200, t - lastFrame)); lastFrame = t;
+      ctx.clearRect(0, 0, W, H);
+      if (!on) return;
+      if (dirty) measure();
+      const sx = scrollX, sy = scrollY;
+
+      // Where the pointer is believed to be as this frame is shown: the last sample, carried
+      // forward by the forecast over the time since it arrived and about half a frame of display
+      // delay. Frames without a new sample then still move, and the drawing keeps up with the cursor.
+      if (imm.ready && hasPtr) {
+        imm.predict(Math.min(0.035, Math.max(0, (t - lastT) / 1000) + 0.008));
+        const go = smooth(60, 300, rawSpeed);
+        oX = ptrX + (imm.px - ptrX) * go; oY = ptrY + (imm.py - ptrY) * go; hasO = true;
+        for (let i = 0; i < N; i++) for (let k = 0; k < 2; k++) drawV[2 * i + k] = ease(drawV[2 * i + k], imm.s[i][2 + k], dt, 45, 45);
+      }
+
+      // the trace of what happened: ink, fading very slowly. The older part comes from the layer,
+      // the newest part (since the layer was drawn) and the line to the pointer are drawn live.
+      while (tTail < tHead && t - TT[tTail & (CAP - 1)] > TRAIL_MS) tTail++;
+      if (t - layerAt > LAYER_MS || ((sx !== layerSX || sy !== layerSY) && t - layerAt > 60)) renderLayer(t, sx, sy);
+      ctx.globalAlpha = 1;
+      if (tHead > tTail) ctx.drawImage(layer, 0, 0, layer.width, layer.height, layerSX - sx, layerSY - sy, W, H);
+      ctx.strokeStyle = col.ink; ctx.lineWidth = 1.25; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for (let i = Math.max(tTail + 1, layerEnd); i < tHead; i++) {
+        const h = (i - 1) & (CAP - 1), k = i & (CAP - 1);
+        ctx.moveTo(TX[h] - sx, TY[h] - sy); ctx.lineTo(TX[k] - sx, TY[k] - sy);
+      }
+      if (tHead > tTail && hasO && t - lastMove < 300) {
+        const k = (tHead - 1) & (CAP - 1); ctx.moveTo(TX[k] - sx, TY[k] - sy); ctx.lineTo(oX, oY);
+      }
+      ctx.globalAlpha = bandAlpha(BANDS - 1); ctx.stroke();
+
+      // the forecast: eases in with speed, eases out when the pointer rests
+      const idle = t - lastMove;
+      if (idle > 40) rawSpeed *= Math.exp(-dt / 200);
+      shown = ease(shown, smooth(40, 260, rawSpeed) * (1 - smooth(250, 900, idle)), dt, RISE, FALL);
+      litN = 0; tipN = 0;
+      if (imm.ready && hasO && shown > 0.005) {
+        for (let i = 0; i < N; i++) shownW[i] = ease(shownW[i], imm.w[i], dt, 120, 120);
+        // how uncertain the forecast is at each step ahead; it fades out as that grows
+        // (computed at a few horizons and interpolated between them)
+        for (let j = 0; j < 5; j++) { imm.predict((j / 4) * HORIZON); knots[j] = 1 - smooth(14, 150, imm.sigma); }
+        for (let k = 0; k <= STEPS; k++) {
+          const u = (k / STEPS) * 4, j = Math.min(3, Math.floor(u));
+          fade[k] = knots[j] + (knots[j + 1] - knots[j]) * (u - j);
+        }
+        ctx.strokeStyle = col.predict; ctx.fillStyle = col.predict; bStrength = shown;
+        for (let i = 1; i < N; i++) if (shownW[i] > 0.04) branch(i);
+        if (shown > 0.4 && tipN && t - lastCommit > COMMIT_EVERY) {
+          lastCommit = t;
+          const tips = new Float64Array(2 * tipN);
+          for (let j = 0; j < tipN; j++) { tips[2 * j] = TIPS[2 * j] + sx; tips[2 * j + 1] = TIPS[2 * j + 1] + sy; }
+          imm.predict(HORIZON);
+          commits.push({ due: t + HORIZON * 1000, tips, sigma: imm.sigma });
+        }
+      }
+
+      // forecasts whose time has come meet the observation
+      while (hasPtr && commits.length && commits[0].due <= t) {
+        const c = commits.shift()!, ox = ptrX + sx, oy = ptrY + sy;
+        let miss = Infinity;
+        for (let j = 0; j < c.tips.length; j += 2) miss = Math.min(miss, Math.hypot(c.tips[j] - ox, c.tips[j + 1] - oy));
+        marks.push({ t, x: ox, y: oy, surprise: miss > Math.max(45, 1.2 * c.sigma) });
+      }
+      let kept = 0, surprising = false;
+      for (const m of marks) {
+        const age = t - m.t;
+        if (age >= (m.surprise ? SURPRISE_MS : OBS_MS)) continue;
+        marks[kept++] = m;
+        const x = m.x - sx, y = m.y - sy;
+        if (m.surprise) {
+          surprising = true;
+          const s = age / SURPRISE_MS, g = 1 - (1 - s) ** 3;
+          ctx.globalAlpha = 0.7 * (1 - s) ** 2; ctx.strokeStyle = col.surprise; ctx.lineWidth = 1.25;
+          ctx.beginPath(); ctx.arc(x, y, 3 + 9 * g, 0, 7); ctx.stroke();
+        } else {
+          const a = 1 - age / OBS_MS;
+          ctx.globalAlpha = 0.85 * a * a; ctx.fillStyle = col.evidence;
+          ctx.beginPath(); ctx.arc(x, y, 2.4, 0, 7); ctx.fill();
+        }
+      }
+      marks.length = kept;
+      ctx.globalAlpha = 1;
+
+      // links within reach of the forecast take on its blue; the page's style is touched only
+      // when a link's tint has changed visibly
+      for (const { a, rs } of boxes) {
+        let reach = 0;
+        for (let j = 0; j < litN; j++) {
+          const px = LIT[3 * j], py = LIT[3 * j + 1], pa = LIT[3 * j + 2];
+          if (pa <= reach) continue;
+          let d = Infinity;
+          for (const r of rs) d = Math.min(d, Math.hypot(Math.max(r.left - px, 0, px - r.right), Math.max(r.top - py, 0, py - r.bottom)));
+          reach = Math.max(reach, pa * Math.exp(-((d / 16) ** 2)));
+        }
+        let h = hue.get(a);
+        const target = Math.min(1, 1.5 * reach);
+        if (!h) { if (target < 0.02) continue; h = { v: 0, written: -1 }; hue.set(a, h); a.classList.add('fc'); }
+        h.v = ease(h.v, target, dt, HUE_RISE, HUE_FALL);
+        if (h.v < 0.01 && target < 0.01) { untint(a); continue; }
+        if (Math.abs(h.v - h.written) >= 0.01) { h.written = h.v; a.style.setProperty('--fc', h.v.toFixed(2)); }
+      }
+      // links that scrolled out of view lose their tint
+      if (hue.size) for (const a of hue.keys()) if (!boxes.some((b) => b.a === a)) untint(a);
+
+      if (shown > 0.005 || commits.length || hue.size || surprising || t - lastMove < 500) kick();
+      else if (tHead > tTail || marks.length) timer = window.setTimeout(kick, LAYER_MS);
+      else { lastFrame = 0; ctx.clearRect(0, 0, W, H); }
+    };
+  }
+</script>

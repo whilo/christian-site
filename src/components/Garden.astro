@@ -74,14 +74,20 @@
       const rv = reduce ? K - 1 : Math.min(K - 1, 1 + (tc / GROW) * (K - 2));
       const fade = reduce ? 1 : 1 - Math.max(0, (tc - GROW - HOLD) / FADE);
       ctx.clearRect(0, 0, W, H); ctx.lineWidth = 1;
-      for (let k = 1; k < K && k - 1 <= rv; k++) {
-        const f = Math.min(1, rv - (k - 1)), s = run.seg[k];
-        for (let j = 0; j < N; j++) {
-          const stopped = !run.alive[k][j] && rv > run.last[k][j] + 0.5;
-          ctx.strokeStyle = stopped ? col.muted : col.predict;
-          ctx.globalAlpha = (stopped ? 0.22 : run.alive[k][j] ? 0.7 : 0.45) * fade;
-          ctx.beginPath(); ctx.moveTo(X(k - 1), Y(s.y0[j])); ctx.lineTo(X(k - 1 + f), Y(s.y0[j] + (s.y1[j] - s.y0[j]) * f)); ctx.stroke();
+      // three kinds of path (stopped, alive, about to stop), each drawn as one stroke
+      for (const kind of [0, 1, 2]) {
+        ctx.beginPath();
+        for (let k = 1; k < K && k - 1 <= rv; k++) {
+          const f = Math.min(1, rv - (k - 1)), s = run.seg[k];
+          for (let j = 0; j < N; j++) {
+            const stopped = !run.alive[k][j] && rv > run.last[k][j] + 0.5;
+            if ((stopped ? 0 : run.alive[k][j] ? 1 : 2) !== kind) continue;
+            ctx.moveTo(X(k - 1), Y(s.y0[j])); ctx.lineTo(X(k - 1 + f), Y(s.y0[j] + (s.y1[j] - s.y0[j]) * f));
+          }
         }
+        ctx.strokeStyle = kind === 0 ? col.muted : col.predict;
+        ctx.globalAlpha = [0.22, 0.7, 0.45][kind] * fade;
+        ctx.stroke();
       }
       ctx.strokeStyle = ctx.fillStyle = col.evidence; ctx.lineWidth = 1.5;
       for (const o of run.obs) {

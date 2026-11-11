@@ -73,6 +73,8 @@ pre {
 
 .footer { padding-block: 64px 48px; color: var(--muted); font-family: var(--display); font-size: 13.5px; display: flex; flex-wrap: wrap; gap: 8px 22px; }
 .footer a { color: var(--muted); }
+/* room below the footer for the fixed reading-time note */
+.footer-reading { padding-bottom: 130px; }
 
 /* The two-column grid used by pages */
 .spread {
