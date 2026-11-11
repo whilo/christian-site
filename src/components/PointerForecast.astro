@@ -61,8 +61,16 @@
   if (toggle && fine) {
     const KEY = 'pointer-forecast';
     const stored = (() => { try { return localStorage.getItem(KEY); } catch { return null; } })();
-    let on = stored ? stored === 'on' : !matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const label = () => { toggle.setAttribute('aria-checked', String(on)); };
+    // A device that cannot keep up pauses the forecast for the rest of the visit (see stalled()),
+    // unless the reader switched it on again themselves during this visit.
+    const session = (k: string, v?: string) => { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch { /* storage blocked */ } return null; };
+    let chosen = session('forecast-chosen') === '1', paused = !chosen && session('forecast-paused') === '1';
+    let on = !paused && (stored ? stored === 'on' : !matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const title = toggle.title;
+    const label = () => {
+      toggle.setAttribute('aria-checked', String(on));
+      toggle.title = paused && !on ? 'Paused, because this device seemed too busy to keep up. ' + title : title;
+    };
     toggle.hidden = false; label();
 
     // The canvas on the page, and an offscreen layer holding the older part of the trace, which
@@ -116,14 +124,30 @@
     const hue = new Map<HTMLAnchorElement, { v: number; written: number }>();
 
     const untint = (a: HTMLAnchorElement) => { hue.delete(a); a.classList.remove('fc'); a.style.removeProperty('--fc'); };
-    toggle.addEventListener('click', () => {
-      on = !on; label();
-      try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch { /* storage blocked */ }
-      if (on) return;
+    const clear = () => {
       tHead = tTail = layerEnd = 0; marks = []; commits = []; shown = 0; hasO = false; layerAt = -Infinity;
       for (const a of [...hue.keys()]) untint(a);
       ctx.clearRect(0, 0, W, H);
+    };
+    toggle.addEventListener('click', () => {
+      on = !on; chosen = true; paused = false; label();
+      session('forecast-chosen', '1');
+      try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch { /* storage blocked */ }
+      if (!on) clear();
     });
+
+    // A frame that comes much later than the one before means the page (or the whole machine)
+    // stalled. The forecasts that came due meanwhile are dropped rather than all resolved at once,
+    // and the forecast fades in again. Three stalls within ten seconds pause it for the visit.
+    const STALL_MS = 250;
+    let stalls: number[] = [];
+    const stalled = (t: number) => {
+      commits = []; shown = 0;
+      for (let i = 0; i < N; i++) { drawV[2 * i] = imm.s[i][2]; drawV[2 * i + 1] = imm.s[i][3]; }
+      stalls = stalls.filter((s) => t - s < 10000); stalls.push(t);
+      if (stalls.length >= 3 && !chosen) { on = false; paused = true; session('forecast-paused', '1'); label(); clear(); }
+    };
+    document.addEventListener('visibilitychange', () => { lastFrame = 0; });
 
     // visible links and their boxes, measured again after scrolling or resizing
     const links = [...document.querySelectorAll<HTMLAnchorElement>('a[href]')];
@@ -231,7 +255,9 @@
 
     const frame = (t: number) => {
       pending = false;
-      const dt = Math.max(1, Math.min(200, t - lastFrame)); lastFrame = t;
+      const gap = lastFrame ? t - lastFrame : 0;
+      const dt = Math.max(1, Math.min(200, gap)); lastFrame = t;
+      if (gap > STALL_MS && !document.hidden) { stalled(t); if (!on) return; }
       ctx.clearRect(0, 0, W, H);
       if (!on) return;
       if (dirty) measure();
