@@ -91,8 +91,8 @@
 
     // ---- timing: how fast things appear and disappear (ms) ----
     const HORIZON = 0.6, STEPS = 18, FORKS = [5, 11], COMMIT_EVERY = 200;
-    const RISE = 160, FALL = 1400;         // the forecast eases in quickly and out slowly
-    const HUE_RISE = 160, HUE_FALL = 1200; // links take on and lose the forecast's blue
+    const RISE = 160, FALL = 3000;         // the forecast eases in quickly and out slowly
+    const HUE_RISE = 160, HUE_FALL = 3000; // links take on and lose the forecast's blue
     const TRAIL_MS = 20000, OBS_MS = 12000, SURPRISE_MS = 2400, LAYER_MS = 150;
 
     // ---- state; fixed buffers, so that frames and mouse samples allocate (almost) nothing ----
@@ -266,8 +266,8 @@
 
       // the forecast: eases in with speed, eases out when the pointer rests
       const idle = t - lastMove;
-      if (idle > 40) rawSpeed *= Math.exp(-dt / 200);
-      shown = ease(shown, smooth(40, 260, rawSpeed) * (1 - smooth(250, 900, idle)), dt, RISE, FALL);
+      if (idle > 40) rawSpeed *= Math.exp(-dt / 450);
+      shown = ease(shown, smooth(40, 260, rawSpeed) * (1 - smooth(500, 2000, idle)), dt, RISE, FALL);
       litN = 0; tipN = 0;
       if (imm.ready && hasO && shown > 0.005) {
         for (let i = 0; i < N; i++) shownW[i] = ease(shownW[i], imm.w[i], dt, 120, 120);
